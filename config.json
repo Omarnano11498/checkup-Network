@@ -1,0 +1,62 @@
+{
+  "switch": {
+    "host": "192.168.1.8",
+    "port": 22,
+    "username": "admin",
+    "password": "N9d07572",
+    "enable_password": "enable-password",
+    "timeout": 20
+  },
+  "network": {
+    "gateway": "192.168.1.200",
+    "ping_targets": [
+      "192.168.1.200",
+      "8.8.8.8"
+    ],
+    "subnet": "192.168.1.0/24",
+    "scan_workers": 64,
+    "resolve_names": true,
+    "uplink_mac_threshold": 3
+  },
+  "cables": {
+    "ports": "all",
+    "exclude": [],
+    "skip_mgmt_port": true,
+    "skip_fiber": true,
+    "max_length_m": 100
+  },
+  "thresholds": {
+    "heavy_util_pct": 70.0,
+    "cpu_warn_pct": 80.0,
+    "mem_warn_pct": 85.0
+  },
+  "monitoring": {
+    "interval_sec": 10,
+    "samples": 3,
+    "top_ports": 18,
+    "watch_sec": 0
+  },
+  "mirror": {
+    "session": 1,
+    "dest_port": "",
+    "keep_mirror": false
+  },
+  "capture": {
+    "iface": "",
+    "duration_sec": 60
+  },
+  "output": {
+    "out_dir": "reports",
+    "csv_file": "traffic_log.csv"
+  },
+  "commands": {
+    "sysinfo": "show system-info",
+    "cpu": "show cpu-utilization",
+    "mem": "show memory-utilization",
+    "status": "show interface status",
+    "counters": "show interface counters",
+    "mac_table": "show mac address-table all",
+    "arp": "show arp",
+    "cable_test": "show cable-diagnostics interface gigabitEthernet {port}"
+  }
+}

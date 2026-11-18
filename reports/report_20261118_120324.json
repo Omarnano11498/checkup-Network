@@ -1,0 +1,1154 @@
+{
+  "timestamp": "2026-11-18T12:02:08",
+  "switch": "192.168.1.8",
+  "network": [
+    {
+      "host": "192.168.1.200",
+      "alive": true,
+      "loss_pct": 0.0,
+      "avg_ms": 1.0
+    },
+    {
+      "host": "192.168.1.8",
+      "alive": true,
+      "loss_pct": 0.0,
+      "avg_ms": 3.0
+    },
+    {
+      "host": "8.8.8.8",
+      "alive": true,
+      "loss_pct": 0.0,
+      "avg_ms": 37.67
+    }
+  ],
+  "switch_health": {
+    "cpu_pct": 30.0,
+    "mem_pct": 45.0,
+    "uptime": "7 day - 23 hour - 55 min - 14 sec",
+    "ports_up": [
+      "Gi1/0/1",
+      "Gi1/0/11",
+      "Gi1/0/12",
+      "Gi1/0/13",
+      "Gi1/0/14",
+      "Gi1/0/15",
+      "Gi1/0/16",
+      "Gi1/0/2",
+      "Gi1/0/7",
+      "Gi1/0/8"
+    ],
+    "ports_down": [
+      "Gi1/0/10",
+      "Gi1/0/17",
+      "Gi1/0/18",
+      "Gi1/0/3",
+      "Gi1/0/4",
+      "Gi1/0/5",
+      "Gi1/0/6",
+      "Gi1/0/9"
+    ],
+    "error_ports": {},
+    "alerts": [
+      "Port Gi1/0/2 linked at low speed 100M (likely a damaged cable pair or a 100M NIC)",
+      "Port Gi1/0/8 linked at low speed 100M (likely a damaged cable pair or a 100M NIC)",
+      "Port Gi1/0/12 linked at low speed 100M (likely a damaged cable pair or a 100M NIC)",
+      "Port Gi1/0/13 linked at low speed 100M (likely a damaged cable pair or a 100M NIC)",
+      "Port Gi1/0/14 linked at low speed 100M (likely a damaged cable pair or a 100M NIC)",
+      "Port Gi1/0/16 linked at low speed 100M (likely a damaged cable pair or a 100M NIC)"
+    ]
+  },
+  "discovery": {
+    "subnet": "192.168.1.0/24",
+    "alive_count": 25,
+    "devices": [
+      {
+        "ip": "192.168.1.1",
+        "other_ips": [],
+        "mac": "d4:ae:52:c5:4b:1e",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.5",
+        "other_ips": [],
+        "mac": "20:23:51:a3:ce:e8",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.6",
+        "other_ips": [],
+        "mac": "00:5f:67:98:a5:82",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.7",
+        "other_ips": [],
+        "mac": "1c:3b:f3:aa:08:d6",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.8",
+        "other_ips": [],
+        "mac": "10:5a:95:4d:2d:24",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 2.0,
+        "behind_uplink": false,
+        "role": "switch",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.33",
+        "other_ips": [],
+        "mac": "00:c0:ee:3e:c8:88",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.34",
+        "other_ips": [],
+        "mac": "00:17:c8:08:b2:80",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.35",
+        "other_ips": [],
+        "mac": "9c:7b:ef:5b:04:f8",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.44",
+        "other_ips": [],
+        "mac": "10:e7:c6:21:85:69",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.47",
+        "other_ips": [],
+        "mac": "f4:39:09:30:57:6a",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.48",
+        "other_ips": [],
+        "mac": "c2:39:a2:fc:16:69",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 2.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.53",
+        "other_ips": [],
+        "mac": "ba:ba:04:c8:76:fd",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 187.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.73",
+        "other_ips": [],
+        "mac": "b0:7b:25:16:b4:e5",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.75",
+        "other_ips": [],
+        "mac": "3a:56:64:64:c5:c5",
+        "port": null,
+        "vlan": null,
+        "ping": false,
+        "rtt_ms": null,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.79",
+        "other_ips": [],
+        "mac": "f4:39:09:30:30:cd",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.86",
+        "other_ips": [],
+        "mac": "3c:d9:2b:0d:55:74",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.87",
+        "other_ips": [],
+        "mac": "36:8c:51:60:e0:a3",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 709.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.89",
+        "other_ips": [],
+        "mac": "02:65:08:a3:7f:89",
+        "port": null,
+        "vlan": null,
+        "ping": false,
+        "rtt_ms": null,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.113",
+        "other_ips": [],
+        "mac": "00:f4:8d:b2:60:0b",
+        "port": null,
+        "vlan": null,
+        "ping": false,
+        "rtt_ms": null,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.125",
+        "other_ips": [],
+        "mac": "90:0f:0c:27:cc:8f",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 169.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.160",
+        "other_ips": [],
+        "mac": "d2:07:9f:11:b7:2d",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 125.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.168",
+        "other_ips": [],
+        "mac": "00:0c:29:86:08:2f",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 2.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.188",
+        "other_ips": [],
+        "mac": "ea:44:ad:b7:28:e7",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 36.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.190",
+        "other_ips": [],
+        "mac": "fa:ce:ba:5e:d2:6d",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 100.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.200",
+        "other_ips": [],
+        "mac": "28:6d:da:10:29:58",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "gateway",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.202",
+        "other_ips": [],
+        "mac": "5c:a4:f4:8f:b2:f8",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.240",
+        "other_ips": [],
+        "mac": "74:d4:35:02:d3:8f",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 2.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null
+      },
+      {
+        "ip": "192.168.1.250",
+        "other_ips": [],
+        "mac": "9c:7b:ef:58:1a:ea",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "this-pc",
+        "hostname": "itdepartment"
+      }
+    ],
+    "ports": {
+      "Gi1/0/1": {
+        "link": "up",
+        "speed_mbps": 1000,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/2": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/3": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/4": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/5": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/6": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/7": {
+        "link": "up",
+        "speed_mbps": 1000,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/8": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/9": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/10": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/11": {
+        "link": "up",
+        "speed_mbps": 1000,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/12": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/13": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/14": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/15": {
+        "link": "up",
+        "speed_mbps": 1000,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/16": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/17": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "fiber",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/18": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "fiber",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      }
+    },
+    "mgmt_ports": [],
+    "alerts": []
+  },
+  "cables": {
+    "Gi1/0/1": {
+      "verdict": "ok",
+      "message": "OK ~42m",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 42.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 42.0
+        },
+        {
+          "pair": "C",
+          "status": "normal",
+          "length_m": 42.0
+        },
+        {
+          "pair": "D",
+          "status": "normal",
+          "length_m": 42.0
+        }
+      ]
+    },
+    "Gi1/0/2": {
+      "verdict": "warn",
+      "message": "Cable looks OK ~13m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 13.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 13.0
+        }
+      ]
+    },
+    "Gi1/0/3": {
+      "verdict": "unplugged",
+      "message": "No cable connected",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "B",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "C",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "D",
+          "status": "open",
+          "length_m": 1.0
+        }
+      ]
+    },
+    "Gi1/0/4": {
+      "verdict": "unplugged",
+      "message": "No cable connected",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "B",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "C",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "D",
+          "status": "open",
+          "length_m": 1.0
+        }
+      ]
+    },
+    "Gi1/0/5": {
+      "verdict": "unplugged",
+      "message": "No cable connected",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "B",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "C",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "D",
+          "status": "open",
+          "length_m": 1.0
+        }
+      ]
+    },
+    "Gi1/0/6": {
+      "verdict": "unplugged",
+      "message": "No cable connected",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "B",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "C",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "D",
+          "status": "open",
+          "length_m": 1.0
+        }
+      ]
+    },
+    "Gi1/0/7": {
+      "verdict": "ok",
+      "message": "OK ~44m",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 44.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 44.0
+        },
+        {
+          "pair": "C",
+          "status": "normal",
+          "length_m": 44.0
+        },
+        {
+          "pair": "D",
+          "status": "normal",
+          "length_m": 44.0
+        }
+      ]
+    },
+    "Gi1/0/8": {
+      "verdict": "warn",
+      "message": "Cable looks OK ~61m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 61.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 61.0
+        }
+      ]
+    },
+    "Gi1/0/9": {
+      "verdict": "unplugged",
+      "message": "No cable connected",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "B",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "C",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "D",
+          "status": "open",
+          "length_m": 1.0
+        }
+      ]
+    },
+    "Gi1/0/10": {
+      "verdict": "unplugged",
+      "message": "No cable connected",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "B",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "C",
+          "status": "open",
+          "length_m": 1.0
+        },
+        {
+          "pair": "D",
+          "status": "open",
+          "length_m": 1.0
+        }
+      ]
+    },
+    "Gi1/0/11": {
+      "verdict": "ok",
+      "message": "OK ~18m",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 18.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 18.0
+        },
+        {
+          "pair": "C",
+          "status": "normal",
+          "length_m": 18.0
+        },
+        {
+          "pair": "D",
+          "status": "normal",
+          "length_m": 18.0
+        }
+      ]
+    },
+    "Gi1/0/12": {
+      "verdict": "warn",
+      "message": "Cable looks OK ~41m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 41.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 41.0
+        }
+      ]
+    },
+    "Gi1/0/13": {
+      "verdict": "warn",
+      "message": "Cable looks OK ~63m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 63.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 63.0
+        }
+      ]
+    },
+    "Gi1/0/14": {
+      "verdict": "warn",
+      "message": "Cable looks OK ~20m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 20.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 20.0
+        }
+      ]
+    },
+    "Gi1/0/15": {
+      "verdict": "ok",
+      "message": "OK ~31m",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 31.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 31.0
+        },
+        {
+          "pair": "C",
+          "status": "normal",
+          "length_m": 31.0
+        },
+        {
+          "pair": "D",
+          "status": "normal",
+          "length_m": 31.0
+        }
+      ]
+    },
+    "Gi1/0/16": {
+      "verdict": "warn",
+      "message": "Cable looks OK ~17m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+      "pairs": [
+        {
+          "pair": "A",
+          "status": "normal",
+          "length_m": 17.0
+        },
+        {
+          "pair": "B",
+          "status": "normal",
+          "length_m": 17.0
+        }
+      ]
+    },
+    "Gi1/0/17": {
+      "verdict": "skipped",
+      "message": "Fiber/SFP port",
+      "pairs": []
+    },
+    "Gi1/0/18": {
+      "verdict": "skipped",
+      "message": "Fiber/SFP port",
+      "pairs": []
+    }
+  },
+  "network_alerts": [
+    "Cable on Gi1/0/2: Cable looks OK ~13m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+    "Cable on Gi1/0/8: Cable looks OK ~61m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+    "Cable on Gi1/0/12: Cable looks OK ~41m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+    "Cable on Gi1/0/13: Cable looks OK ~63m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+    "Cable on Gi1/0/14: Cable looks OK ~20m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)",
+    "Cable on Gi1/0/16: Cable looks OK ~17m but speed is 100M — check the device NIC or cable category (Cat5e/Cat6)"
+  ],
+  "traffic": [
+    {
+      "port": "Gi1/0/11",
+      "rx_mbps": 6.173,
+      "tx_mbps": 0.298,
+      "total_mbps": 6.472,
+      "speed_mbps": 1000,
+      "util_pct": 0.62,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/14",
+      "rx_mbps": 0.187,
+      "tx_mbps": 3.71,
+      "total_mbps": 3.897,
+      "speed_mbps": 100,
+      "util_pct": 3.71,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/12",
+      "rx_mbps": 0.057,
+      "tx_mbps": 2.164,
+      "total_mbps": 2.221,
+      "speed_mbps": 100,
+      "util_pct": 2.16,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/13",
+      "rx_mbps": 0.04,
+      "tx_mbps": 0.5,
+      "total_mbps": 0.54,
+      "speed_mbps": 100,
+      "util_pct": 0.5,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/16",
+      "rx_mbps": 0.016,
+      "tx_mbps": 0.083,
+      "total_mbps": 0.098,
+      "speed_mbps": 100,
+      "util_pct": 0.08,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/8",
+      "rx_mbps": 0.029,
+      "tx_mbps": 0.066,
+      "total_mbps": 0.095,
+      "speed_mbps": 100,
+      "util_pct": 0.07,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/15",
+      "rx_mbps": 0.036,
+      "tx_mbps": 0.023,
+      "total_mbps": 0.06,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/2",
+      "rx_mbps": 0.01,
+      "tx_mbps": 0.022,
+      "total_mbps": 0.033,
+      "speed_mbps": 100,
+      "util_pct": 0.02,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/7",
+      "rx_mbps": 0.01,
+      "tx_mbps": 0.02,
+      "total_mbps": 0.03,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/1",
+      "rx_mbps": 0.005,
+      "tx_mbps": 0.019,
+      "total_mbps": 0.024,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "up"
+    },
+    {
+      "port": "Gi1/0/3",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/4",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/5",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/6",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/9",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/10",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/17",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    },
+    {
+      "port": "Gi1/0/18",
+      "rx_mbps": 0.0,
+      "tx_mbps": 0.0,
+      "total_mbps": 0.0,
+      "speed_mbps": 1000,
+      "util_pct": 0.0,
+      "new_errors": 0,
+      "link": "down"
+    }
+  ],
+  "heaviest_port": {
+    "port": "Gi1/0/11",
+    "rx_mbps": 6.173,
+    "tx_mbps": 0.298,
+    "total_mbps": 6.472,
+    "speed_mbps": 1000,
+    "util_pct": 0.62,
+    "new_errors": 0,
+    "link": "up"
+  }
+}
