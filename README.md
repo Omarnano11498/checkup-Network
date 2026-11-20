@@ -55,7 +55,7 @@ Open `config.json` and edit the values:
 
 ```json
 {
-  "switch":     { "host": "192.168.1.250", "port": 22, "username": "", "password": "", "enable_password": "", "timeout": 20 },
+  "switch":     { "host": "192.168.1.110", "port": 22, "username": "", "password": "", "enable_password": "", "timeout": 20 },
   "network":    { "gateway": "192.168.1.1", "ping_targets": ["192.168.1.1", "8.8.8.8"], "subnet": "192.168.1.0/24" },
   "cables":     { "ports": "all", "exclude": [], "skip_mgmt_port": true, "skip_fiber": true, "max_length_m": 100 },
   "thresholds": { "heavy_util_pct": 70.0, "cpu_warn_pct": 80.0, "mem_warn_pct": 85.0 },
