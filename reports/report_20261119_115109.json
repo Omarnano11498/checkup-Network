@@ -1,0 +1,818 @@
+{
+  "timestamp": "2026-11-19T11:43:46",
+  "switch": "192.168.1.9",
+  "discovery": {
+    "subnet": "192.168.1.0/24",
+    "alive_count": 16,
+    "devices": [
+      {
+        "ip": "192.168.1.11",
+        "other_ips": [],
+        "mac": "10:e7:c6:f0:1e:e0",
+        "port": "Gi1/0/1",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 3.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": "HANY-AMER",
+        "lldp_name": null,
+        "name_source": "NetBIOS",
+        "workgroup": "WORKGROUP",
+        "vendor": "Hewlett Packard",
+        "open_ports": [
+          135,
+          139,
+          445,
+          5357
+        ],
+        "services": [
+          "135/msrpc",
+          "139/netbios",
+          "445/smb",
+          "5357/wsd"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Windows PC / server"
+      },
+      {
+        "ip": "192.168.1.31",
+        "other_ips": [],
+        "mac": "ba:e4:b8:d5:6e:0c",
+        "port": "Gi1/0/2",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 7.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "Private (random) MAC",
+        "open_ports": [],
+        "services": [],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Phone / laptop (private MAC)"
+      },
+      {
+        "ip": "192.168.1.200",
+        "other_ips": [],
+        "mac": "c0:91:20:b7:db:ae",
+        "port": "Gi1/0/2",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "gateway",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "Sichuan Tianyi Comheart Telecom Co.,LTD",
+        "open_ports": [
+          80,
+          443
+        ],
+        "services": [
+          "80/http",
+          "443/https"
+        ],
+        "web": "ty_httpd",
+        "snmp_descr": null,
+        "type": "Router / gateway"
+      },
+      {
+        "ip": "192.168.1.42",
+        "other_ips": [],
+        "mac": "00:30:67:e2:69:7a",
+        "port": "Gi1/0/6",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": "OSAMA-PC",
+        "lldp_name": null,
+        "name_source": "NetBIOS",
+        "workgroup": "WORKGROUP",
+        "vendor": "BIOSTAR Microtech Int'l Corp.",
+        "open_ports": [
+          135,
+          139,
+          445
+        ],
+        "services": [
+          "135/msrpc",
+          "139/netbios",
+          "445/smb"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Windows PC / server"
+      },
+      {
+        "ip": "192.168.1.230",
+        "other_ips": [],
+        "mac": "44:59:43:41:79:5c",
+        "port": "Gi1/0/10",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": "h188a",
+        "lldp_name": null,
+        "name_source": "DNS",
+        "workgroup": null,
+        "vendor": "zte corporation",
+        "open_ports": [
+          53,
+          80,
+          443
+        ],
+        "services": [
+          "53/dns",
+          "80/http",
+          "443/https"
+        ],
+        "web": "H188A | ZTE web server 1.0 ZTE corp 2015.",
+        "snmp_descr": null,
+        "type": "Device with web interface"
+      },
+      {
+        "ip": "192.168.1.4",
+        "other_ips": [],
+        "mac": "5c:e9:31:83:6a:70",
+        "port": "Gi1/0/11",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": true,
+        "role": "",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "TP-Link Systems Inc",
+        "open_ports": [
+          22,
+          80
+        ],
+        "services": [
+          "22/ssh",
+          "80/http"
+        ],
+        "web": "Opening...",
+        "snmp_descr": null,
+        "type": "Network device (AP/switch/router)"
+      },
+      {
+        "ip": "192.168.1.32",
+        "other_ips": [],
+        "mac": "16:52:3c:15:5d:af",
+        "port": "Gi1/0/11",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 309.0,
+        "behind_uplink": true,
+        "role": "",
+        "hostname": "Android",
+        "lldp_name": null,
+        "name_source": "mDNS",
+        "workgroup": null,
+        "vendor": "Private (random) MAC",
+        "open_ports": [],
+        "services": [],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Phone / laptop (private MAC)"
+      },
+      {
+        "ip": "192.168.1.33",
+        "other_ips": [],
+        "mac": "60:ab:14:54:62:dc",
+        "port": "Gi1/0/11",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 2.0,
+        "behind_uplink": true,
+        "role": "",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "LG Innotek",
+        "open_ports": [
+          1433
+        ],
+        "services": [
+          "1433/mssql"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Unknown"
+      },
+      {
+        "ip": "192.168.1.3",
+        "other_ips": [],
+        "mac": "d8:0d:17:75:ca:7e",
+        "port": "Gi1/0/12",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "Tp-Link Technologies Co.,Ltd.",
+        "open_ports": [
+          23,
+          80
+        ],
+        "services": [
+          "23/telnet",
+          "80/http"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Network device (AP/switch/router)"
+      },
+      {
+        "ip": "192.168.1.34",
+        "other_ips": [],
+        "mac": "e2:3b:74:c1:e4:52",
+        "port": "Gi1/0/12",
+        "vlan": 1,
+        "ping": false,
+        "rtt_ms": null,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "Private (random) MAC",
+        "open_ports": [],
+        "services": [],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Phone / laptop (private MAC)"
+      },
+      {
+        "ip": "192.168.1.45",
+        "other_ips": [],
+        "mac": "00:17:c8:25:7c:ee",
+        "port": "Gi1/0/15",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": true,
+        "role": "",
+        "hostname": "KM257CEE",
+        "lldp_name": null,
+        "name_source": "mDNS",
+        "workgroup": null,
+        "vendor": "KYOCERA Display Corporation",
+        "open_ports": [
+          21,
+          80,
+          139,
+          445,
+          515,
+          631,
+          9100
+        ],
+        "services": [
+          "21/ftp",
+          "80/http",
+          "139/netbios",
+          "445/smb",
+          "515/lpd",
+          "631/ipp",
+          "9100/jetdirect"
+        ],
+        "web": "KM-MFP-http/V0.0.1",
+        "snmp_descr": null,
+        "type": "Printer"
+      },
+      {
+        "ip": "192.168.1.91",
+        "other_ips": [],
+        "mac": "74:d4:35:2d:7b:b2",
+        "port": "Gi1/0/15",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": true,
+        "role": "",
+        "hostname": "ELSEKRTARYA01",
+        "lldp_name": null,
+        "name_source": "NetBIOS",
+        "workgroup": "WORKGROUP",
+        "vendor": "Giga-Byte Technology Co.,Ltd.",
+        "open_ports": [
+          135,
+          139,
+          445,
+          5357
+        ],
+        "services": [
+          "135/msrpc",
+          "139/netbios",
+          "445/smb",
+          "5357/wsd"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Windows PC / server"
+      },
+      {
+        "ip": "192.168.1.94",
+        "other_ips": [],
+        "mac": "00:17:c8:26:df:16",
+        "port": "Gi1/0/15",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": true,
+        "role": "",
+        "hostname": "KM26DF16",
+        "lldp_name": null,
+        "name_source": "mDNS",
+        "workgroup": null,
+        "vendor": "KYOCERA Display Corporation",
+        "open_ports": [
+          21,
+          80,
+          139,
+          445,
+          515,
+          631,
+          9100
+        ],
+        "services": [
+          "21/ftp",
+          "80/http",
+          "139/netbios",
+          "445/smb",
+          "515/lpd",
+          "631/ipp",
+          "9100/jetdirect"
+        ],
+        "web": "KM-MFP-http/V0.0.1",
+        "snmp_descr": null,
+        "type": "Printer"
+      },
+      {
+        "ip": "192.168.1.23",
+        "other_ips": [],
+        "mac": "40:8d:5c:96:a8:1b",
+        "port": "Gi1/0/16",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": "AUDIO",
+        "lldp_name": null,
+        "name_source": "NetBIOS",
+        "workgroup": "WORKGROUP",
+        "vendor": "Giga-Byte Technology Co.,Ltd.",
+        "open_ports": [
+          22,
+          135,
+          139,
+          445
+        ],
+        "services": [
+          "22/ssh",
+          "135/msrpc",
+          "139/netbios",
+          "445/smb"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Windows PC / server"
+      },
+      {
+        "ip": "192.168.1.35",
+        "other_ips": [],
+        "mac": "9c:7b:ef:58:1a:ea",
+        "port": "Gi1/0/16",
+        "vlan": 1,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "this-pc",
+        "hostname": "ITDEPARTMENT",
+        "lldp_name": "ITDEPARTMENT",
+        "name_source": "LLDP",
+        "workgroup": null,
+        "vendor": "Hewlett Packard",
+        "open_ports": [
+          135,
+          139,
+          445,
+          3389,
+          5357
+        ],
+        "services": [
+          "135/msrpc",
+          "139/netbios",
+          "445/smb",
+          "3389/rdp",
+          "5357/wsd"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Windows PC / server"
+      },
+      {
+        "ip": "192.168.1.9",
+        "other_ips": [],
+        "mac": "10:5a:95:4d:29:07",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 2.0,
+        "behind_uplink": false,
+        "role": "switch",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "TP-Link Systems Inc.",
+        "open_ports": [
+          22,
+          80,
+          443
+        ],
+        "services": [
+          "22/ssh",
+          "80/http",
+          "443/https"
+        ],
+        "web": "Web Switch",
+        "snmp_descr": null,
+        "type": "This switch"
+      },
+      {
+        "ip": "192.168.1.195",
+        "other_ips": [],
+        "mac": "00:17:61:10:a4:d4",
+        "port": null,
+        "vlan": null,
+        "ping": true,
+        "rtt_ms": 1.0,
+        "behind_uplink": false,
+        "role": "",
+        "hostname": null,
+        "lldp_name": null,
+        "name_source": null,
+        "workgroup": null,
+        "vendor": "Private",
+        "open_ports": [
+          23
+        ],
+        "services": [
+          "23/telnet"
+        ],
+        "web": null,
+        "snmp_descr": null,
+        "type": "Unknown"
+      }
+    ],
+    "ports": {
+      "Gi1/0/1": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 1,
+        "uplink": false,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.11"
+        ]
+      },
+      "Gi1/0/2": {
+        "link": "up",
+        "speed_mbps": 1000,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 2,
+        "uplink": false,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.31",
+          "192.168.1.200"
+        ]
+      },
+      "Gi1/0/3": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/4": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/5": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/6": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 1,
+        "uplink": false,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.42"
+        ]
+      },
+      "Gi1/0/7": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/8": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/9": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/10": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 1,
+        "uplink": false,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.230"
+        ]
+      },
+      "Gi1/0/11": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 3,
+        "uplink": true,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.4",
+          "192.168.1.32",
+          "192.168.1.33"
+        ]
+      },
+      "Gi1/0/12": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 2,
+        "uplink": false,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.3",
+          "192.168.1.34"
+        ]
+      },
+      "Gi1/0/13": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/14": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "copper",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/15": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 3,
+        "uplink": true,
+        "mgmt": false,
+        "ips": [
+          "192.168.1.45",
+          "192.168.1.91",
+          "192.168.1.94"
+        ]
+      },
+      "Gi1/0/16": {
+        "link": "up",
+        "speed_mbps": 100,
+        "duplex": "Full",
+        "medium": "copper",
+        "mac_count": 2,
+        "uplink": false,
+        "mgmt": true,
+        "ips": [
+          "192.168.1.23",
+          "192.168.1.35"
+        ]
+      },
+      "Gi1/0/17": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "fiber",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      },
+      "Gi1/0/18": {
+        "link": "down",
+        "speed_mbps": 0,
+        "duplex": "N/A",
+        "medium": "fiber",
+        "mac_count": 0,
+        "uplink": false,
+        "mgmt": false,
+        "ips": []
+      }
+    },
+    "mgmt_ports": [
+      "Gi1/0/16"
+    ],
+    "alerts": [
+      "Port Gi1/0/9 is up but has learned no MAC (silent device or VLAN issue)",
+      "1 device(s) on the network not seen on this switch (wireless/another switch/another VLAN): 192.168.1.195"
+    ],
+    "lldp": [
+      {
+        "port": "Gi1/0/16",
+        "device_id": "40:8D:5C:96:A8:1B",
+        "port_id": "40:8D:5C:96:A8:1B",
+        "mgmt_ip": "",
+        "port_desc": "",
+        "sys_name": ""
+      },
+      {
+        "port": "Gi1/0/16",
+        "device_id": "ITDEPARTMENT",
+        "port_id": "9C:7B:EF:58:1A:EA",
+        "mgmt_ip": "",
+        "port_desc": "",
+        "sys_name": ""
+      }
+    ]
+  },
+  "network_alerts": [
+    "Port Gi1/0/9 is up but has learned no MAC (silent device or VLAN issue)",
+    "1 device(s) on the network not seen on this switch (wireless/another switch/another VLAN): 192.168.1.195"
+  ],
+  "sites": {
+    "duration_sec": 300,
+    "mirror_sources": [
+      "Gi1/0/2",
+      "Gi1/0/10"
+    ],
+    "mirror_dest": "Gi1/0/16",
+    "devices": [
+      {
+        "ip": "192.168.1.35",
+        "hostname": "ITDEPARTMENT",
+        "port": "Gi1/0/16",
+        "type": "Windows PC / server",
+        "social": [],
+        "apps": [
+          {
+            "name": "Microsoft 365",
+            "category": "Office",
+            "hits": 9
+          },
+          {
+            "name": "AnyDesk",
+            "category": "Remote access",
+            "hits": 6
+          },
+          {
+            "name": "Bing",
+            "category": "Search",
+            "hits": 1
+          }
+        ],
+        "top_sites": [
+          {
+            "domain": "tailscale.com",
+            "hits": 33
+          },
+          {
+            "domain": "1.33",
+            "hits": 28
+          },
+          {
+            "domain": "ts.net",
+            "hits": 20
+          },
+          {
+            "domain": "1.94",
+            "hits": 5
+          },
+          {
+            "domain": "1.45",
+            "hits": 5
+          },
+          {
+            "domain": "1.3",
+            "hits": 4
+          },
+          {
+            "domain": "sfx.ms",
+            "hits": 4
+          },
+          {
+            "domain": "1.4",
+            "hits": 3
+          },
+          {
+            "domain": "live.net",
+            "hits": 2
+          },
+          {
+            "domain": "visualstudio.com",
+            "hits": 2
+          }
+        ],
+        "categories": {
+          "Office": 9,
+          "Remote access": 6,
+          "Search": 1
+        },
+        "browsers": [],
+        "os": [
+          "Windows"
+        ],
+        "user_agents": [
+          "DAFUPnP",
+          "Microsoft NCSI",
+          "Microsoft-CryptoAPI/10.0",
+          "Microsoft-Delivery-Optimization/10.1",
+          "Microsoft-Windows/10.0 UPnP/1.0"
+        ],
+        "lookups": 234
+      }
+    ]
+  }
+}

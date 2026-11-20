@@ -1,22 +1,79 @@
 {
   "switch": {
-    "host": "192.168.1.10",
+    "host": "write ip-address switch",
     "port": 22,
     "username": "admin",
-    "password": "123456789",
+    "password": "123456",
     "enable_password": "enable-password",
-    "timeout": 20
+    "timeout": 20,
+    "mac": "write switch mac-address"
   },
   "network": {
-    "gateway": "192.168.1.1",
+    "gateway": "write gateway ip-address",
     "ping_targets": [
-      "192.168.1.1",
-      "8.8.8.8"
+      "write ip-address target1",
+      "write ip-address target2"
     ],
-    "subnet": "192.168.1.0/24",
+    "subnet": "write subnet in CIDR format    r",
     "scan_workers": 64,
     "resolve_names": true,
     "uplink_mac_threshold": 3
+  },
+  "devices": {
+    "port_scan": true,
+    "scan_ports": [
+      21,
+      22,
+      23,
+      25,
+      53,
+      80,
+      110,
+      135,
+      139,
+      143,
+      443,
+      445,
+      515,
+      548,
+      554,
+      631,
+      1433,
+      1883,
+      3306,
+      3389,
+      5000,
+      5060,
+      5357,
+      5900,
+      8000,
+      8008,
+      8080,
+      8443,
+      8888,
+      9100,
+      37777,
+      62078
+    ],
+    "scan_timeout": 0.6,
+    "scan_workers": 256,
+    "netbios": true,
+    "mdns": true,
+    "snmp": true,
+    "snmp_communities": [
+      "public"
+    ],
+    "http_title": true,
+    "vendor_lookup": true,
+    "oui_file": "manuf.txt",
+    "oui_url": "https://www.wireshark.org/download/automated/data/manuf"
+  },
+  "sites": {
+    "duration_sec": 120,
+    "mirror_sources": "auto",
+    "mirror_dest": "",
+    "iface": "",
+    "top_sites": 10
   },
   "cables": {
     "ports": "all",
@@ -57,6 +114,7 @@
     "counters": "show interface counters",
     "mac_table": "show mac address-table all",
     "arp": "show arp",
-    "cable_test": "show cable-diagnostics interface gigabitEthernet {port}"
+    "cable_test": "show cable-diagnostics interface gigabitEthernet {port}",
+    "lldp": "show lldp neighbor-information"
   }
 }

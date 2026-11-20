@@ -56,11 +56,16 @@ for _s in (sys.stdout, sys.stderr):
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 FALLBACK = {
-    "switch": {"host": "192.168.1.250", "port": 22, "username": "", "password": "",
+    "switch": {"host": "write ip-address switch", "port": 22, "username": "", "password": "",
                "enable_password": "", "timeout": 20},
-    "network": {"gateway": "192.168.1.1", "ping_targets": ["192.168.1.1"],
-                "subnet": "", "scan_workers": 64, "resolve_names": True,
+    "network": {"gateway": "write gateway ip-address", "ping_targets": ["write ip-address target1", "write ip-address target2"],
+                "subnet": "write subnet in CIDR format    r", "scan_workers": 64, "resolve_names": True,
                 "uplink_mac_threshold": 3},
+    "devices": {"port_scan": True, "scan_ports": [], "scan_timeout": 0.6, "scan_workers": 256,
+                "netbios": True, "mdns": True, "snmp": True, "snmp_communities": ["public"],
+                "http_title": True, "vendor_lookup": True, "oui_file": "manuf.txt",
+                "oui_url": "https://www.wireshark.org/download/automated/data/manuf"},
+    "sites": {"duration_sec": 120, "mirror_sources": "auto", "mirror_dest": "", "iface": "", "top_sites": 10},
     "cables": {"ports": "all", "exclude": [], "skip_mgmt_port": True, "skip_fiber": True,
                "max_length_m": 100},
     "thresholds": {"heavy_util_pct": 70.0, "cpu_warn_pct": 80.0, "mem_warn_pct": 85.0},
@@ -75,6 +80,7 @@ FALLBACK = {
         "status": "show interface status",
         "counters": "show interface counters",
         "mac_table": "show mac address-table",
+        "lldp": "show lldp neighbor-information",
         "arp": "show arp",
         "cable_test": "show cable-diagnostics interface gigabitEthernet {port}",
     },
@@ -576,6 +582,30 @@ def ping_sweep(net, workers=64):
     return {r["host"]: r for r in res if r["alive"]}
 
 
+CMD_ALTERNATIVES = {
+    "mac_table": ["show mac address-table", "show mac address-table all", "show mac-address-table"],
+    "arp": ["show arp", "show ip arp"],
+    "lldp": ["show lldp neighbor-information", "show lldp neighbors"],
+}
+CLI_ERROR_RE = re.compile(r"Error:|Invalid (?:parameter|input|command)|Unrecognized|Incomplete command|^\s*%", re.I | re.M)
+
+
+def run_cmd(sw, key):
+    """Run CMD[key]; if the switch rejects it, try known alternatives and remember the one that works."""
+    tried = []
+    for cmd in [CMD.get(key)] + CMD_ALTERNATIVES.get(key, []):
+        if not cmd or cmd in tried:
+            continue
+        tried.append(cmd)
+        out = sw.run(cmd)
+        if not CLI_ERROR_RE.search(out):
+            if cmd != CMD.get(key):
+                print(f"  ℹ '{CMD.get(key)}' is not supported here — using '{cmd}' (update config.json to skip this)")
+                CMD[key] = cmd
+            return out
+    return out if tried else ""
+
+
 def discover_network(sw, cfg, status, raw_dump=None):
     """
     Discovers every device connected to the switch:
@@ -591,11 +621,15 @@ def discover_network(sw, cfg, status, raw_dump=None):
     alive = ping_sweep(net, int(net_c.get("scan_workers") or 64))
     print(f"  {len(alive)} devices replied to ping in {time.time() - t0:.0f}s", flush=True)
 
-    raw_mac = sw.run(CMD["mac_table"])
-    raw_arp = sw.run(CMD["arp"])
+    raw_mac = run_cmd(sw, "mac_table")
+    raw_arp = run_cmd(sw, "arp")
+    raw_lldp = run_cmd(sw, "lldp") if CMD.get("lldp") else ""
     if raw_dump is not None:
         raw_dump[CMD["mac_table"]] = raw_mac
         raw_dump[CMD["arp"]] = raw_arp
+        if raw_lldp:
+            raw_dump[CMD["lldp"]] = raw_lldp
+    lldp_rows = parse_lldp(raw_lldp)
     mac_rows = parse_mac_table(raw_mac)
     if not mac_rows:
         print("  ⚠ Could not read the switch MAC table — run with --dump-raw to review the output.")
@@ -645,11 +679,7 @@ def discover_network(sw, cfg, status, raw_dump=None):
                             "ping": True, "rtt_ms": alive[ip]["avg_ms"], "behind_uplink": False,
                             "role": "switch" if ip == cfg["switch"]["host"] else "", "hostname": None})
 
-    if net_c.get("resolve_names", True):
-        names = resolve_names([d["ip"] for d in devices if d["ip"]])
-        for d in devices:
-            n = names.get(d["ip"])
-            d["hostname"] = n if n and n != d["ip"] else None   # some resolvers echo the IP back
+    identify_devices(devices, cfg, lldp_rows)
 
     devices.sort(key=lambda d: (port_key(d["port"]),
                                 int(ipaddress.ip_address(d["ip"])) if d["ip"] else 2 ** 32))
@@ -673,7 +703,956 @@ def discover_network(sw, cfg, status, raw_dump=None):
             alerts.append(f"{len(not_on_sw)} device(s) on the network not seen on this switch (wireless/another switch/another VLAN): "
                           + ", ".join(not_on_sw[:10]) + (" ..." if len(not_on_sw) > 10 else ""))
     return {"subnet": str(net), "alive_count": len(alive), "devices": devices,
-            "ports": ports, "mgmt_ports": mgmt_ports, "alerts": alerts}
+            "ports": ports, "mgmt_ports": mgmt_ports, "alerts": alerts, "lldp": lldp_rows}
+
+
+# ======================= Device identification (name, vendor, open ports) =======================
+SERVICES = {
+    21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns", 80: "http", 110: "pop3", 135: "msrpc",
+    139: "netbios", 143: "imap", 443: "https", 445: "smb", 515: "lpd", 548: "afp", 554: "rtsp",
+    631: "ipp", 1433: "mssql", 1883: "mqtt", 3306: "mysql", 3389: "rdp", 5000: "upnp/http",
+    5060: "sip", 5357: "wsd", 5900: "vnc", 8000: "http-alt", 8008: "http-alt", 8080: "http-proxy",
+    8443: "https-alt", 8888: "http-alt", 9100: "jetdirect", 37777: "dahua-dvr", 62078: "apple-sync",
+}
+HTTP_PORTS = (80, 8080, 8000, 8008, 8888, 5000)
+HTTPS_PORTS = (443, 8443)
+
+
+def parse_lldp(text):
+    """show lldp neighbor-information → [{port, device_id, port_id, mgmt_ip, port_desc, sys_name}] (fixed-width columns)."""
+    lines = text.splitlines()
+    hdr = next((l for l in lines if re.search(r"\bPort\b", l) and re.search(r"Device\s*ID", l, re.I)), None)
+    if not hdr:
+        return []
+    names = ["port", "device_id", "port_id", "mgmt_ip", "port_desc", "sys_name"]
+    heads = [r"\bPort\b", r"Device\s*ID", r"Port\s*ID", r"management\s*address", r"Port\s*Description", r"System\s*Name"]
+    starts = []
+    for h in heads:
+        m = re.search(h, hdr, re.I)
+        starts.append(m.start() if m else None)
+    cols = sorted((s, n) for s, n in zip(starts, names) if s is not None)
+    rows = []
+    for l in lines:
+        if not re.match(rf"\s*{PORT_RE}", l):
+            continue
+        r = {}
+        for i, (s, n) in enumerate(cols):
+            e = cols[i + 1][0] if i + 1 < len(cols) else None
+            r[n] = l[s:e].strip() if len(l) > s else ""
+        r["port"] = norm_port(re.search(PORT_RE, l).group(0))
+        rows.append(r)
+    return rows
+
+
+def is_random_mac(mac):
+    """Locally administered bit set → randomized/virtual MAC (phones with privacy MAC, VMs, hotspots)."""
+    return bool(mac) and bool(int(mac[:2], 16) & 2)
+
+
+_OUI = None
+
+
+def load_oui(cfg):
+    """MAC vendor database (Wireshark 'manuf'), downloaded once and cached next to the script."""
+    global _OUI
+    if _OUI is not None:
+        return _OUI
+    _OUI = {}
+    dev = cfg.get("devices", {})
+    if not dev.get("vendor_lookup", True):
+        return _OUI
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), dev.get("oui_file") or "manuf.txt")
+    if not os.path.exists(path):
+        try:
+            import urllib.request
+            print("  ⬇ Downloading MAC vendor database (one time)...", flush=True)
+            req = urllib.request.Request(dev.get("oui_url") or "https://www.wireshark.org/download/automated/data/manuf",
+                                         headers={"User-Agent": "switch-monitor"})
+            with urllib.request.urlopen(req, timeout=30) as r, open(path, "wb") as f:
+                f.write(r.read())
+        except Exception as e:
+            print(f"  ⚠ Could not download the vendor database ({e}); vendors will be blank.")
+            return _OUI
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                if not line.strip() or line.startswith("#"):
+                    continue
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) < 2:
+                    continue
+                pfx, short = parts[0].strip(), parts[1].strip()
+                full = parts[2].strip() if len(parts) > 2 and parts[2].strip() else short
+                bits = 24
+                if "/" in pfx:
+                    pfx, b = pfx.split("/")
+                    bits = int(b)
+                hexs = re.sub(r"[^0-9A-Fa-f]", "", pfx).lower()[: bits // 4]
+                _OUI[(bits, hexs)] = full
+    except Exception:
+        pass
+    return _OUI
+
+
+def mac_vendor(mac, cfg):
+    if not mac:
+        return None
+    if is_random_mac(mac):
+        return "Private (random) MAC"
+    db = load_oui(cfg)
+    h = mac.replace(":", "")
+    for bits in (36, 28, 24):
+        v = db.get((bits, h[: bits // 4]))
+        if v:
+            return v
+    return None
+
+
+# ---------- NetBIOS node status (Windows PCs, NAS, many printers) ----------
+def netbios_names(ips, timeout=2.0):
+    q = (b"\x13\x37\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00"
+         b"\x20" + b"CK" + b"A" * 30 + b"\x00" + b"\x00\x21\x00\x01")
+    res = {}
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0.2)
+    try:
+        for ip in ips:
+            try:
+                s.sendto(q, (ip, 137))
+            except OSError:
+                pass
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                data, (src, _) = s.recvfrom(2048)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            try:
+                off = 12 + 34 + 4 + 4 + 2          # header + name + type/class + ttl + rdlength
+                n = data[off]
+                off += 1
+                name = group = None
+                for i in range(n):
+                    raw = data[off + i * 18: off + i * 18 + 18]
+                    nm = raw[:15].decode("ascii", "ignore").strip()
+                    suffix, flags = raw[15], int.from_bytes(raw[16:18], "big")
+                    if suffix == 0x00 and not flags & 0x8000 and not name:
+                        name = nm
+                    elif suffix == 0x00 and flags & 0x8000 and not group:
+                        group = nm
+                if name:
+                    res[src] = {"name": name, "workgroup": group}
+            except Exception:
+                pass
+    finally:
+        s.close()
+    return res
+
+
+# ---------- mDNS reverse lookup (Apple, Linux/Avahi, printers, Chromecast...) ----------
+def _dns_name(data, off):
+    labels, jumped, end = [], False, off
+    for _ in range(64):
+        ln = data[off]
+        if ln == 0:
+            off += 1
+            break
+        if ln & 0xC0 == 0xC0:
+            if not jumped:
+                end = off + 2
+            off = ((ln & 0x3F) << 8) | data[off + 1]
+            jumped = True
+            continue
+        labels.append(data[off + 1: off + 1 + ln].decode("utf-8", "ignore"))
+        off += 1 + ln
+    return ".".join(labels), (end if jumped else off)
+
+
+def mdns_names(ips, timeout=2.0):
+    res = {}
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0.2)
+    try:
+        for i, ip in enumerate(ips):
+            qname = b"".join(bytes([len(p)]) + p.encode() for p in (ip.split(".")[::-1] + ["in-addr", "arpa"])) + b"\x00"
+            pkt = (i & 0xFFFF).to_bytes(2, "big") + b"\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00" + qname + b"\x00\x0c\x80\x01"
+            try:
+                s.sendto(pkt, (ip, 5353))
+            except OSError:
+                pass
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                data, (src, _) = s.recvfrom(4096)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            try:
+                qd, an = int.from_bytes(data[4:6], "big"), int.from_bytes(data[6:8], "big")
+                off = 12
+                for _ in range(qd):
+                    _, off = _dns_name(data, off)
+                    off += 4
+                for _ in range(an):
+                    _, off = _dns_name(data, off)
+                    typ = int.from_bytes(data[off:off + 2], "big")
+                    rdlen = int.from_bytes(data[off + 8:off + 10], "big")
+                    off += 10
+                    if typ == 12:
+                        name, _ = _dns_name(data, off)
+                        res[src] = re.sub(r"\.local\.?$", "", name)
+                        break
+                    off += rdlen
+            except Exception:
+                pass
+    finally:
+        s.close()
+    return res
+
+
+# ---------- SNMP v1 sysName / sysDescr (printers, APs, switches, NAS) ----------
+def _ber_len(n):
+    return bytes([n]) if n < 128 else bytes([0x81, n])
+
+
+def _ber(tag, payload):
+    return bytes([tag]) + _ber_len(len(payload)) + payload
+
+
+def _snmp_get(community, req_id):
+    def oid(o):
+        p = [int(x) for x in o.split(".")]
+        body = bytes([40 * p[0] + p[1]])
+        for v in p[2:]:
+            enc = [v & 0x7F]
+            v >>= 7
+            while v:
+                enc.insert(0, 0x80 | (v & 0x7F))
+                v >>= 7
+            body += bytes(enc)
+        return _ber(0x06, body)
+    binds = b"".join(_ber(0x30, oid(o) + b"\x05\x00") for o in ("1.3.6.1.2.1.1.5.0", "1.3.6.1.2.1.1.1.0"))
+    pdu = _ber(0xA0, _ber(0x02, req_id.to_bytes(2, "big")) + b"\x02\x01\x00\x02\x01\x00" + _ber(0x30, binds))
+    return _ber(0x30, b"\x02\x01\x00" + _ber(0x04, community.encode()) + pdu)
+
+
+def snmp_info(ips, communities=("public",), timeout=2.0):
+    res = {}
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0.2)
+    try:
+        for c in communities:
+            for i, ip in enumerate(ips):
+                try:
+                    s.sendto(_snmp_get(c, i + 1), (ip, 161))
+                except OSError:
+                    pass
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                data, (src, _) = s.recvfrom(4096)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            # Values follow each OID; pull the OCTET STRINGs (tag 0x04) after the sysName/sysDescr OIDs.
+            vals = []
+            for marker in (b"\x2b\x06\x01\x02\x01\x01\x05\x00", b"\x2b\x06\x01\x02\x01\x01\x01\x00"):
+                k = data.find(marker)
+                if k < 0 or k + len(marker) + 2 > len(data) or data[k + len(marker)] != 0x04:
+                    vals.append(None)
+                    continue
+                p = k + len(marker) + 1
+                ln = data[p]
+                p += 1
+                if ln & 0x80:
+                    nb = ln & 0x7F
+                    ln = int.from_bytes(data[p:p + nb], "big")
+                    p += nb
+                vals.append(data[p:p + ln].decode("utf-8", "ignore").strip() or None)
+            if any(vals) and src not in res:
+                res[src] = {"sys_name": vals[0], "sys_descr": vals[1]}
+    finally:
+        s.close()
+    return res
+
+
+# ---------- TCP port scan + web page title ----------
+def port_scan(ips, ports, timeout=0.6, workers=256):
+    open_ports = {ip: [] for ip in ips}
+
+    def probe(job):
+        ip, port = job
+        try:
+            with socket.create_connection((ip, port), timeout=timeout):
+                return ip, port
+        except OSError:
+            return None
+
+    jobs = [(ip, p) for ip in ips for p in ports]
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        for r in ex.map(probe, jobs):
+            if r:
+                open_ports[r[0]].append(r[1])
+    return {ip: sorted(p) for ip, p in open_ports.items()}
+
+
+def http_title(ip, port, https=False, timeout=3):
+    """Web page title + Server header, following up to 3 redirects (e.g. http → https login page)."""
+    import html
+    import http.client
+    import ssl
+    from urllib.parse import urljoin, urlsplit
+    url = f"{'https' if https else 'http'}://{ip}:{port}/"
+    server = ""
+    try:
+        for _ in range(4):
+            u = urlsplit(url)
+            if u.scheme == "https":
+                conn = http.client.HTTPSConnection(u.hostname, u.port or 443, timeout=timeout,
+                                                   context=ssl._create_unverified_context())
+            else:
+                conn = http.client.HTTPConnection(u.hostname, u.port or 80, timeout=timeout)
+            conn.request("GET", (u.path or "/") + (f"?{u.query}" if u.query else ""),
+                         headers={"User-Agent": "switch-monitor", "Host": u.netloc})
+            r = conn.getresponse()
+            body = r.read(65536).decode("utf-8", "ignore")
+            server = r.getheader("Server") or server
+            loc = r.getheader("Location")
+            conn.close()
+            if r.status in (301, 302, 303, 307, 308) and loc:
+                url = urljoin(url, loc)
+                continue
+            m = re.search(r"<title[^>]*>\s*(.*?)\s*</title>", body, re.I | re.S)
+            title = re.sub(r"\s+", " ", html.unescape(m.group(1))).strip()[:80] if m else ""
+            return " | ".join(x for x in (title, server) if x) or None
+        return server or None
+    except Exception:
+        return server or None
+
+
+def guess_type(d):
+    """Best-effort device type from role, open ports, vendor and names."""
+    ports = set(d.get("open_ports") or [])
+    v = (d.get("vendor") or "").lower()
+    txt = " ".join(str(x or "") for x in (d.get("hostname"), d.get("web"), d.get("snmp_descr"), d.get("lldp_name"))).lower()
+    if d.get("role") == "gateway":
+        return "Router / gateway"
+    if d.get("role") == "switch":
+        return "This switch"
+    if ports & {9100, 515, 631} or re.search(r"printer|laserjet|officejet|epson|canon|brother|kyocera|ricoh|xerox", txt + v):
+        return "Printer"
+    if ports & {554, 37777} or re.search(r"hikvision|dahua|camera|nvr|dvr|ipc", txt + v):
+        return "IP camera / NVR"
+    if 62078 in ports or "iphone" in txt or "ipad" in txt:
+        return "iPhone / iPad"
+    if 3389 in ports or {135, 445} <= ports or "windows" in txt:
+        return "Windows PC / server"
+    if 548 in ports or "macbook" in txt or "imac" in txt:
+        return "Mac"
+    if 5060 in ports or re.search(r"yealink|grandstream|polycom|voip|sip", txt + v):
+        return "VoIP phone"
+    if re.search(r"tp-?link|ubiquiti|mikrotik|cisco|aruba|ruckus|omada|access point|router|switch|huawei tech|"
+                 r"zxhn|fiberhome|\bont\b|gpon", txt + v):
+        return "Network device (AP/switch/router)"
+    if re.search(r"synology|qnap|nas", txt + v):
+        return "NAS / storage"
+    if "random" in v:
+        return "Phone / laptop (private MAC)"
+    if re.search(r"samsung|xiaomi|oppo|vivo|realme|oneplus|apple", v):
+        return "Phone / tablet / Apple device"
+    if 22 in ports and (80 in ports or 443 in ports):
+        return "Linux / embedded device"
+    if ports & {80, 443, 8080}:
+        return "Device with web interface"
+    return "Unknown"
+
+
+def identify_devices(devices, cfg, lldp_rows):
+    """Fill in name, name source, vendor, open TCP ports, web title, SNMP info and a type guess for each device."""
+    dc = cfg.get("devices", {})
+    ips = [d["ip"] for d in devices if d["ip"]]
+    t0 = time.time()
+    print(f"🪪 Identifying {len(ips)} devices (names, vendors{', open ports' if dc.get('port_scan', True) else ''})...", flush=True)
+
+    lldp_by_mac = {}
+    for r in lldp_rows:
+        for key in ("device_id", "port_id"):
+            mm = re.fullmatch(MAC_RE, r.get(key, "") or "")
+            if mm:
+                lldp_by_mac[norm_mac(mm.group(1))] = r
+    lldp_by_port = {}
+    for r in lldp_rows:
+        lldp_by_port.setdefault(r["port"], []).append(r)
+
+    with cf.ThreadPoolExecutor(max_workers=5) as ex:
+        f_nb = ex.submit(netbios_names, ips) if dc.get("netbios", True) else None
+        f_md = ex.submit(mdns_names, ips) if dc.get("mdns", True) else None
+        f_sn = ex.submit(snmp_info, ips, tuple(dc.get("snmp_communities") or ["public"])) if dc.get("snmp", True) else None
+        f_dns = ex.submit(resolve_names, ips) if cfg["network"].get("resolve_names", True) else None
+        f_ps = ex.submit(port_scan, ips, [int(p) for p in dc.get("scan_ports") or SERVICES],
+                         float(dc.get("scan_timeout") or 0.6), int(dc.get("scan_workers") or 256)) \
+            if dc.get("port_scan", True) else None
+        nb = f_nb.result() if f_nb else {}
+        md = f_md.result() if f_md else {}
+        sn = f_sn.result() if f_sn else {}
+        dns = f_dns.result() if f_dns else {}
+        ps = f_ps.result() if f_ps else {}
+
+    web_jobs = {}
+    if dc.get("http_title", True):
+        with cf.ThreadPoolExecutor(max_workers=32) as ex:
+            for ip, ports in ps.items():
+                hp = next((p for p in ports if p in HTTP_PORTS), None)
+                sp = next((p for p in ports if p in HTTPS_PORTS), None)
+                if hp or sp:
+                    web_jobs[ip] = ex.submit(http_title, ip, hp or sp, https=not hp)
+            web = {ip: f.result() for ip, f in web_jobs.items()}
+    else:
+        web = {}
+
+    for d in devices:
+        ip, mac = d["ip"], d["mac"]
+        l = lldp_by_mac.get(mac)
+        lname = None
+        if l:
+            for key in ("sys_name", "device_id"):
+                v = (l.get(key) or "").strip()
+                if v and not re.fullmatch(MAC_RE, v):
+                    lname = v
+                    break
+        d["lldp_name"] = lname
+        dns_name = dns.get(ip)
+        if dns_name == ip:
+            dns_name = None
+        candidates = [("LLDP", lname), ("NetBIOS", (nb.get(ip) or {}).get("name")), ("mDNS", md.get(ip)),
+                      ("DNS", dns_name), ("SNMP", (sn.get(ip) or {}).get("sys_name"))]
+        d["hostname"], d["name_source"] = next(((v, s) for s, v in candidates if v), (None, None))
+        d["workgroup"] = (nb.get(ip) or {}).get("workgroup")
+        d["vendor"] = mac_vendor(mac, cfg)
+        d["open_ports"] = ps.get(ip, []) if ip else []
+        d["services"] = [f"{p}/{SERVICES.get(p, 'tcp')}" for p in d["open_ports"]]
+        d["web"] = web.get(ip)
+        d["snmp_descr"] = (sn.get(ip) or {}).get("sys_descr")
+        d["type"] = guess_type(d)
+
+    # A "random" MAC that equals a real device's MAC with only the locally-administered bit flipped
+    # is a virtual interface of that same device (routers, Wi-Fi APs, VMs), not a separate phone.
+    by_mac = {d["mac"]: d for d in devices if d["mac"]}
+    for d in devices:
+        if d["mac"] and is_random_mac(d["mac"]):
+            base = f"{int(d['mac'][:2], 16) & ~2:02x}" + d["mac"][2:]
+            owner = by_mac.get(base)
+            if owner:
+                label = owner.get("hostname") or owner.get("ip") or owner["mac"]
+                d["type"] = f"Virtual MAC of {label}"
+                d["vendor"] = owner.get("vendor")
+                d["hostname"] = d["hostname"] or owner.get("hostname")
+
+    named = sum(1 for d in devices if d["hostname"])
+    print(f"  names found for {named}/{len(devices)} devices "
+          f"(LLDP {sum(1 for d in devices if d.get('name_source') == 'LLDP')}, NetBIOS {len(nb)}, mDNS {len(md)}, "
+          f"DNS {sum(1 for ip, v in dns.items() if v and v != ip)}, SNMP {len(sn)}) in {time.time() - t0:.0f}s", flush=True)
+    return devices
+
+
+def print_port_devices(disc):
+    """Terminal view: every switch port with the devices behind it."""
+    print(f"\n🔍 Devices per switch port:")
+    by_port = {}
+    for d in disc["devices"]:
+        by_port.setdefault(d["port"] or "-", []).append(d)
+    for p in sorted(by_port, key=lambda x: port_key(x) if x != "-" else (99999,)):
+        info = disc["ports"].get(p, {})
+        if p == "-":
+            head = "Not on this switch (seen via ARP/ping only)"
+        else:
+            sp = f"{info.get('speed_mbps')}M" if info.get("speed_mbps") else "-"
+            tag = " [uplink: switch/AP behind]" if info.get("uplink") else ""
+            tag += " [mgmt]" if info.get("mgmt") else ""
+            head = f"{p}  ({info.get('link', '?')}, {sp}, {len(by_port[p])} device(s)){tag}"
+        print(f"\n  ▸ {head}")
+        for d in by_port[p]:
+            role = {"gateway": " (gateway)", "this-pc": " (this PC)", "switch": " (this switch)"}.get(d["role"], "")
+            name = (d.get("hostname") or "?") + (f" [{d['name_source']}]" if d.get("name_source") else "")
+            print(f"     {d['ip'] or '-':<15} {d['mac'] or '-':<17}  {name}{role}")
+            print(f"       type: {d.get('type') or '-'}   vendor: {d.get('vendor') or '-'}")
+            if d.get("services"):
+                print(f"       open ports: {', '.join(d['services'])}")
+            if d.get("web"):
+                print(f"       web: {d['web']}")
+            if d.get("snmp_descr"):
+                print(f"       snmp: {d['snmp_descr'][:100]}")
+
+
+# ======================= Websites / social media / browser per IP =======================
+# domain suffix → (display name, category)
+SITE_DB = {
+    # Social media
+    "facebook.com": ("Facebook", "Social media"), "fbcdn.net": ("Facebook", "Social media"),
+    "fb.com": ("Facebook", "Social media"), "facebook.net": ("Facebook", "Social media"),
+    "fbsbx.com": ("Facebook", "Social media"), "messenger.com": ("Messenger", "Messaging"),
+    "instagram.com": ("Instagram", "Social media"), "cdninstagram.com": ("Instagram", "Social media"),
+    "tiktok.com": ("TikTok", "Social media"), "tiktokcdn.com": ("TikTok", "Social media"),
+    "tiktokv.com": ("TikTok", "Social media"), "tiktokcdn-us.com": ("TikTok", "Social media"),
+    "byteoversea.com": ("TikTok", "Social media"), "ibytedtos.com": ("TikTok", "Social media"),
+    "musical.ly": ("TikTok", "Social media"), "twitter.com": ("X (Twitter)", "Social media"),
+    "x.com": ("X (Twitter)", "Social media"), "twimg.com": ("X (Twitter)", "Social media"),
+    "t.co": ("X (Twitter)", "Social media"), "snapchat.com": ("Snapchat", "Social media"),
+    "sc-cdn.net": ("Snapchat", "Social media"), "snapkit.com": ("Snapchat", "Social media"),
+    "linkedin.com": ("LinkedIn", "Social media"), "licdn.com": ("LinkedIn", "Social media"),
+    "pinterest.com": ("Pinterest", "Social media"), "pinimg.com": ("Pinterest", "Social media"),
+    "reddit.com": ("Reddit", "Social media"), "redd.it": ("Reddit", "Social media"),
+    "redditmedia.com": ("Reddit", "Social media"), "threads.net": ("Threads", "Social media"),
+    "tumblr.com": ("Tumblr", "Social media"), "vk.com": ("VK", "Social media"),
+    # Messaging
+    "whatsapp.com": ("WhatsApp", "Messaging"), "whatsapp.net": ("WhatsApp", "Messaging"),
+    "telegram.org": ("Telegram", "Messaging"), "t.me": ("Telegram", "Messaging"),
+    "telegram.me": ("Telegram", "Messaging"), "telesco.pe": ("Telegram", "Messaging"),
+    "signal.org": ("Signal", "Messaging"), "viber.com": ("Viber", "Messaging"),
+    "discord.com": ("Discord", "Messaging"), "discord.gg": ("Discord", "Messaging"),
+    "discordapp.com": ("Discord", "Messaging"), "discordapp.net": ("Discord", "Messaging"),
+    "skype.com": ("Skype", "Messaging"), "imo.im": ("imo", "Messaging"), "botim.me": ("BOTIM", "Messaging"),
+    "zoom.us": ("Zoom", "Meetings"), "zoom.com": ("Zoom", "Meetings"),
+    "teams.microsoft.com": ("Microsoft Teams", "Meetings"), "teams.live.com": ("Microsoft Teams", "Meetings"),
+    "meet.google.com": ("Google Meet", "Meetings"), "anydesk.com": ("AnyDesk", "Remote access"),
+    "teamviewer.com": ("TeamViewer", "Remote access"),
+    # Video / streaming / music
+    "youtube.com": ("YouTube", "Video"), "googlevideo.com": ("YouTube", "Video"),
+    "ytimg.com": ("YouTube", "Video"), "youtu.be": ("YouTube", "Video"),
+    "youtube-nocookie.com": ("YouTube", "Video"), "netflix.com": ("Netflix", "Video"),
+    "nflxvideo.net": ("Netflix", "Video"), "nflximg.net": ("Netflix", "Video"),
+    "shahid.net": ("Shahid", "Video"), "mbc.net": ("Shahid", "Video"), "watchit.com": ("WATCH IT", "Video"),
+    "osnplus.com": ("OSN+", "Video"), "primevideo.com": ("Prime Video", "Video"),
+    "disneyplus.com": ("Disney+", "Video"), "twitch.tv": ("Twitch", "Video"), "ttvnw.net": ("Twitch", "Video"),
+    "vimeo.com": ("Vimeo", "Video"), "dailymotion.com": ("Dailymotion", "Video"),
+    "spotify.com": ("Spotify", "Music"), "scdn.co": ("Spotify", "Music"), "anghami.com": ("Anghami", "Music"),
+    "soundcloud.com": ("SoundCloud", "Music"), "deezer.com": ("Deezer", "Music"),
+    # Search / AI
+    "google.com": ("Google", "Search"), "google.com.eg": ("Google", "Search"), "bing.com": ("Bing", "Search"),
+    "yahoo.com": ("Yahoo", "Search"), "duckduckgo.com": ("DuckDuckGo", "Search"),
+    "yandex.ru": ("Yandex", "Search"), "yandex.com": ("Yandex", "Search"),
+    "openai.com": ("ChatGPT", "AI"), "chatgpt.com": ("ChatGPT", "AI"), "oaiusercontent.com": ("ChatGPT", "AI"),
+    "claude.ai": ("Claude", "AI"), "anthropic.com": ("Claude", "AI"), "gemini.google.com": ("Gemini", "AI"),
+    "deepseek.com": ("DeepSeek", "AI"), "perplexity.ai": ("Perplexity", "AI"), "copilot.microsoft.com": ("Copilot", "AI"),
+    # Email / office / cloud
+    "mail.google.com": ("Gmail", "Email"), "gmail.com": ("Gmail", "Email"),
+    "outlook.com": ("Outlook", "Email"), "outlook.office.com": ("Outlook", "Email"),
+    "outlook.office365.com": ("Outlook", "Email"), "mail.yahoo.com": ("Yahoo Mail", "Email"),
+    "office.com": ("Microsoft 365", "Office"), "office.net": ("Microsoft 365", "Office"),
+    "sharepoint.com": ("SharePoint/OneDrive", "Cloud storage"), "onedrive.live.com": ("OneDrive", "Cloud storage"),
+    "drive.google.com": ("Google Drive", "Cloud storage"), "docs.google.com": ("Google Docs", "Office"),
+    "dropbox.com": ("Dropbox", "Cloud storage"), "dropboxapi.com": ("Dropbox", "Cloud storage"),
+    "icloud.com": ("iCloud", "Cloud storage"), "mega.nz": ("MEGA", "Cloud storage"),
+    "wetransfer.com": ("WeTransfer", "Cloud storage"),
+    # Shopping / finance
+    "amazon.com": ("Amazon", "Shopping"), "amazon.eg": ("Amazon", "Shopping"), "amazon.sa": ("Amazon", "Shopping"),
+    "noon.com": ("noon", "Shopping"), "jumia.com.eg": ("Jumia", "Shopping"), "aliexpress.com": ("AliExpress", "Shopping"),
+    "alibaba.com": ("Alibaba", "Shopping"), "temu.com": ("Temu", "Shopping"), "shein.com": ("SHEIN", "Shopping"),
+    "ebay.com": ("eBay", "Shopping"), "olx.com.eg": ("OLX", "Shopping"), "paypal.com": ("PayPal", "Finance"),
+    "binance.com": ("Binance", "Finance"),
+    # News / reference
+    "wikipedia.org": ("Wikipedia", "Reference"), "bbc.com": ("BBC", "News"), "bbc.co.uk": ("BBC", "News"),
+    "cnn.com": ("CNN", "News"), "aljazeera.net": ("Al Jazeera", "News"), "youm7.com": ("Youm7", "News"),
+    "masrawy.com": ("Masrawy", "News"), "elwatannews.com": ("El Watan", "News"), "ahram.org.eg": ("Al-Ahram", "News"),
+    "skynewsarabia.com": ("Sky News Arabia", "News"), "filgoal.com": ("FilGoal", "Sports"), "kooora.com": ("Kooora", "Sports"),
+    # Gaming
+    "steampowered.com": ("Steam", "Gaming"), "steamcontent.com": ("Steam", "Gaming"), "epicgames.com": ("Epic Games", "Gaming"),
+    "roblox.com": ("Roblox", "Gaming"), "pubgmobile.com": ("PUBG Mobile", "Gaming"), "igamecj.com": ("PUBG Mobile", "Gaming"),
+    "freefiremobile.com": ("Free Fire", "Gaming"), "supercell.com": ("Supercell games", "Gaming"),
+    "xboxlive.com": ("Xbox Live", "Gaming"), "playstation.net": ("PlayStation", "Gaming"),
+    # Dev / work
+    "github.com": ("GitHub", "Development"), "githubusercontent.com": ("GitHub", "Development"),
+    "stackoverflow.com": ("Stack Overflow", "Development"),
+}
+
+# Background/system traffic: counted but hidden from "top websites" so real browsing stands out.
+NOISE_SUFFIXES = (
+    "gstatic.com", "googleapis.com", "googleusercontent.com", "googlesyndication.com", "googletagmanager.com",
+    "google-analytics.com", "doubleclick.net", "googleadservices.com", "gvt1.com", "gvt2.com", "1e100.net",
+    "windowsupdate.com", "update.microsoft.com", "msftncsi.com", "msftconnecttest.com", "microsoft.com",
+    "live.com", "windows.com", "windows.net", "msn.com", "bing.net", "msedge.net", "azureedge.net",
+    "akamaized.net", "akamaiedge.net", "akamai.net", "edgekey.net", "edgesuite.net", "cloudfront.net",
+    "cloudflare.com", "cloudflare-dns.com", "fastly.net", "llnwd.net", "apple.com", "icloud-content.com",
+    "mzstatic.com", "aaplimg.com", "digicert.com", "lencr.org", "sectigo.com", "globalsign.com", "pki.goog",
+    "ocsp.", "crl.", "in-addr.arpa", "local", "lan", "localdomain", "wpad", "mozilla.com", "mozilla.net",
+    "mozilla.org", "firefox.com", "xiaomi.net", "miui.com", "samsungcloudsolution.com", "samsungapps.com",
+    "tp-link.com", "tplinkcloud.com", "ntp.org", "time.windows.com", "adnxs.com", "criteo.com", "taboola.com",
+    "scorecardresearch.com", "hotjar.com", "appsflyer.com", "adjust.com", "branch.io", "crashlytics.com",
+    "app-measurement.com", "firebaseio.com", "amazonaws.com", "azure.com", "office365.com", "trafficmanager.net",
+)
+
+# Hosts that only a given browser contacts in the background → "likely browser"
+BROWSER_HINTS = {
+    "Microsoft Edge": ("edge.microsoft.com", "msedge.net", "edge.activity.windows.com", "ntp.msn.com",
+                       "config.edge.skype.com", "msedge.api.cdp.microsoft.com"),
+    "Google Chrome": ("optimizationguide-pa.googleapis.com", "content-autofill.googleapis.com",
+                      "clientservices.googleapis.com", "chromewebstore.googleapis.com", "chrome.google.com",
+                      "chromesyncpasswords-pa.googleapis.com", "redirector.gvt1.com"),
+    "Mozilla Firefox": ("firefox.settings.services.mozilla.com", "detectportal.firefox.com",
+                        "push.services.mozilla.com", "incoming.telemetry.mozilla.org", "aus5.mozilla.org",
+                        "content-signature-2.cdn.mozilla.net", "firefox-settings-attachments.cdn.mozilla.net"),
+    "Opera": ("opera.com", "operacdn.com", "opera-api.com", "opera-api2.com"),
+    "Brave": ("brave.com", "bravesoftware.com", "brave.software"),
+    "Yandex Browser": ("browser.yandex.net", "api.browser.yandex.net"),
+    "Samsung Internet": ("samsungbrowser", "sbrowser.samsung"),
+}
+
+TWO_LEVEL_SLD = {"com", "co", "net", "org", "gov", "edu", "ac", "sch", "gob", "mil"}
+
+
+def site_of(host):
+    """Map a hostname to (site name, category, registered domain)."""
+    h = host.lower().rstrip(".")
+    parts = h.split(".")
+    for i in range(len(parts) - 1):
+        suf = ".".join(parts[i:])
+        if suf in SITE_DB:
+            name, cat = SITE_DB[suf]
+            return name, cat, suf
+    if len(parts) >= 3 and parts[-2] in TWO_LEVEL_SLD and len(parts[-1]) == 2:
+        reg = ".".join(parts[-3:])
+    else:
+        reg = ".".join(parts[-2:])
+    return None, None, reg
+
+
+def is_noise(host):
+    h = host.lower().rstrip(".")
+    return any(h == s or h.endswith("." + s) or (s.endswith(".") and h.startswith(s)) for s in NOISE_SUFFIXES) \
+        or "." not in h
+
+
+def parse_user_agent(ua):
+    """Return (browser, os) from an HTTP User-Agent string."""
+    b = ("Microsoft Edge" if re.search(r"Edg(e|A|iOS)?/", ua) else
+         "Opera" if re.search(r"OPR/|Opera", ua) else
+         "Samsung Internet" if "SamsungBrowser" in ua else
+         "Yandex Browser" if "YaBrowser" in ua else
+         "Mozilla Firefox" if re.search(r"Firefox/|FxiOS", ua) else
+         "Google Chrome" if re.search(r"Chrome/|CriOS", ua) else
+         "Safari" if "Safari/" in ua and "Version/" in ua else None)
+    o = ("Windows" if "Windows" in ua else "Android" if "Android" in ua else
+         "iOS" if re.search(r"iPhone|iPad", ua) else "macOS" if "Mac OS X" in ua else
+         "Linux" if "Linux" in ua else None)
+    return b, o
+
+
+# ---------- packet parsing (works on raw IPv4 packets from any capture source) ----------
+def _dns_qname(payload):
+    if len(payload) < 13 or payload[2] & 0x80:      # only queries (QR=0)
+        return None
+    if int.from_bytes(payload[4:6], "big") < 1:
+        return None
+    try:
+        name, _ = _dns_name(payload, 12)
+        return name or None
+    except Exception:
+        return None
+
+
+def _tls_sni(p):
+    """Server name from a TLS ClientHello (record type 0x16, handshake type 1)."""
+    try:
+        if len(p) < 43 or p[0] != 0x16 or p[5] != 0x01:
+            return None
+        i = 9 + 2 + 32                                   # record+handshake headers, version, random
+        i += 1 + p[i]                                    # session id
+        i += 2 + int.from_bytes(p[i:i + 2], "big")       # cipher suites
+        i += 1 + p[i]                                    # compression
+        end = i + 2 + int.from_bytes(p[i:i + 2], "big")
+        i += 2
+        while i + 4 <= min(end, len(p)):
+            et, el = int.from_bytes(p[i:i + 2], "big"), int.from_bytes(p[i + 2:i + 4], "big")
+            if et == 0:                                  # server_name
+                ln = int.from_bytes(p[i + 7:i + 9], "big")
+                return p[i + 9:i + 9 + ln].decode("ascii", "ignore") or None
+            i += 4 + el
+    except Exception:
+        pass
+    return None
+
+
+def parse_ip_packet(pkt):
+    """IPv4 packet → (src_ip, kind, value) for DNS queries, TLS SNI, HTTP Host / User-Agent; or None."""
+    if len(pkt) < 20 or pkt[0] >> 4 != 4:
+        return None
+    ihl = (pkt[0] & 0x0F) * 4
+    proto = pkt[9]
+    src = socket.inet_ntoa(pkt[12:16])
+    seg = pkt[ihl:]
+    if proto == 17 and len(seg) >= 8:                    # UDP
+        dport = int.from_bytes(seg[2:4], "big")
+        if dport in (53, 5353):
+            q = _dns_qname(seg[8:])
+            return [(src, "dns", q)] if q and dport == 53 else None
+    elif proto == 6 and len(seg) >= 20:                  # TCP
+        dport = int.from_bytes(seg[2:4], "big")
+        data = seg[(seg[12] >> 4) * 4:]
+        if not data:
+            return None
+        if data[0] == 0x16:
+            sni = _tls_sni(data)
+            return [(src, "sni", sni)] if sni else None
+        if data[:4] in (b"GET ", b"POST", b"HEAD", b"PUT ") or data[:7] == b"OPTIONS":
+            head = data[:4096].decode("latin-1", "ignore")
+            out = []
+            m = re.search(r"^Host:\s*([^\r\n:]+)", head, re.I | re.M)
+            if m:
+                out.append((src, "http", m.group(1).strip()))
+            m = re.search(r"^User-Agent:\s*([^\r\n]+)", head, re.I | re.M)
+            if m:
+                out.append((src, "ua", m.group(1).strip()))
+            return out or None
+        if dport == 53 and len(data) > 2:                # DNS over TCP
+            q = _dns_qname(data[2:])
+            return [(src, "dns", q)] if q else None
+    return None
+
+
+def _eth_to_ip(frame):
+    """Strip Ethernet (and 802.1Q tags) → IPv4 packet bytes, or None."""
+    i, et = 12, int.from_bytes(frame[12:14], "big")
+    while et in (0x8100, 0x88A8) and len(frame) >= i + 6:
+        i += 4
+        et = int.from_bytes(frame[i:i + 2], "big")
+    return frame[i + 2:] if et == 0x0800 else None
+
+
+def read_pcap(path):
+    """Yield IPv4 packets from a classic pcap file (Ethernet or raw-IP link type)."""
+    import struct
+    with open(path, "rb") as f:
+        gh = f.read(24)
+        if len(gh) < 24:
+            return
+        magic = gh[:4]
+        endian = "<" if magic in (b"\xd4\xc3\xb2\xa1", b"\x4d\x3c\xb2\xa1") else ">"
+        link = struct.unpack(endian + "I", gh[20:24])[0]
+        while True:
+            ph = f.read(16)
+            if len(ph) < 16:
+                return
+            incl = struct.unpack(endian + "I", ph[8:12])[0]
+            data = f.read(incl)
+            if link == 1:
+                ip = _eth_to_ip(data)
+                if ip:
+                    yield ip
+            elif link in (101, 228, 12):
+                yield data
+
+
+def find_tshark():
+    t = shutil.which("tshark")
+    if t:
+        return t
+    for p in (r"C:\Program Files\Wireshark\tshark.exe", r"C:\Program Files (x86)\Wireshark\tshark.exe"):
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def is_admin():
+    try:
+        if platform.system().lower() == "windows":
+            import ctypes
+            return bool(ctypes.windll.shell32.IsUserAnAdmin())
+        return os.geteuid() == 0
+    except Exception:
+        return False
+
+
+def local_ip_towards(host):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect((host, 9))
+        return s.getsockname()[0]
+    finally:
+        s.close()
+
+
+def capture_packets(seconds, local_ip, out_dir, iface=None):
+    """
+    Capture for `seconds` and yield IPv4 packets.
+    Order: tshark (Npcap) if installed → built-in raw socket (needs Administrator / root).
+    """
+    tshark = find_tshark()
+    if tshark:
+        pcap = os.path.join(out_dir, f"sites_{datetime.now():%Y%m%d_%H%M%S}.pcap")
+        cmd = [tshark, "-q", "-a", f"duration:{seconds}", "-F", "pcap", "-w", pcap,
+               "-f", "udp port 53 or tcp port 53 or tcp port 443 or tcp port 80"]
+        if iface:
+            cmd[1:1] = ["-i", iface]
+        print(f"  ⏺ Capturing with tshark for {seconds}s...", flush=True)
+        subprocess.run(cmd, capture_output=True, text=True)
+        if os.path.exists(pcap):
+            yield from read_pcap(pcap)
+            return
+        print("  ⚠ tshark produced no capture file — falling back to the built-in capture.")
+    if not is_admin():
+        raise RuntimeError("Capturing traffic needs Administrator rights (or Wireshark/tshark installed). "
+                           "Open PowerShell with 'Run as administrator' and run the script again.")
+    print(f"  ⏺ Capturing (built-in) on {local_ip} for {seconds}s...", flush=True)
+    if platform.system().lower() == "windows":
+        s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
+        s.bind((local_ip, 0))
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+        s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)     # promiscuous: also see mirrored traffic
+        strip = lambda b: b
+    else:
+        s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
+        if iface:
+            s.bind((iface, 0))
+        strip = _eth_to_ip
+    s.settimeout(0.5)
+    end = time.time() + seconds
+    try:
+        while time.time() < end:
+            try:
+                data = s.recvfrom(65535)[0]
+            except socket.timeout:
+                continue
+            ip = strip(data)
+            if ip:
+                yield ip
+    finally:
+        if platform.system().lower() == "windows":
+            try:
+                s.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+            except Exception:
+                pass
+        s.close()
+
+
+def summarize_sites(events, net, devices, top=10):
+    """Aggregate (src, kind, value) events into a per-IP summary."""
+    from collections import Counter
+    per = {}
+    for src, kind, val in events:
+        try:
+            if ipaddress.ip_address(src) not in net:
+                continue
+        except ValueError:
+            continue
+        p = per.setdefault(src, {"hosts": Counter(), "uas": set()})
+        if kind == "ua":
+            p["uas"].add(val)
+        else:
+            p["hosts"][val.lower().rstrip(".")] += 1
+
+    by_ip = {d["ip"]: d for d in devices if d.get("ip")}
+    out = []
+    for ip, p in per.items():
+        apps, cats, sites = Counter(), Counter(), Counter()
+        browsers, oses = {}, set()
+        for h, n in p["hosts"].items():
+            for b, hints in BROWSER_HINTS.items():
+                if any(h == x or h.endswith("." + x) or (x in h and "." not in x) for x in hints):
+                    browsers.setdefault(b, "background traffic")
+            name, cat, reg = site_of(h)
+            if name:
+                apps[name] += n
+                cats[cat] += n
+            elif not is_noise(h):
+                sites[reg] += n
+        for ua in p["uas"]:
+            b, o = parse_user_agent(ua)
+            if b:
+                browsers[b] = "user-agent"
+            if o:
+                oses.add(o)
+        d = by_ip.get(ip, {})
+        out.append({
+            "ip": ip, "hostname": d.get("hostname"), "port": d.get("port"), "type": d.get("type"),
+            "social": sorted({a for a in apps if SITE_DB_CAT.get(a) in ("Social media", "Messaging")}),
+            "apps": [{"name": a, "category": SITE_DB_CAT.get(a), "hits": n} for a, n in apps.most_common()],
+            "top_sites": [{"domain": s, "hits": n} for s, n in sites.most_common(top)],
+            "categories": dict(cats.most_common()),
+            "browsers": [{"name": b, "evidence": e} for b, e in browsers.items()],
+            "os": sorted(oses), "user_agents": sorted(p["uas"])[:5],
+            "lookups": sum(p["hosts"].values()),
+        })
+    out.sort(key=lambda r: (-r["lookups"]))
+    return out
+
+
+SITE_DB_CAT = {name: cat for name, cat in SITE_DB.values()}
+
+
+def mirror_sources_auto(disc):
+    """Ports to mirror so that all internet + DNS traffic is seen: the gateway's port and the local DNS servers' ports."""
+    ports = []
+    for d in disc.get("devices", []):
+        if d.get("port") and (d.get("role") == "gateway" or (53 in (d.get("open_ports") or []) and not d.get("behind_uplink"))):
+            ports.append(d["port"])
+    return sorted(set(ports), key=port_key)
+
+
+def sites_monitor(sw, cfg, disc, args, out_dir):
+    """Mirror the gateway/DNS ports to this PC's port, capture, and report websites/apps/browsers per IP."""
+    sc = cfg.get("sites", {})
+    seconds = int(args.sites_secs or sc.get("duration_sec") or 120)
+    srcs = [x.strip() for x in str(sc.get("mirror_sources") or "auto").split(",") if x.strip()]
+    if srcs == ["auto"]:
+        srcs = mirror_sources_auto(disc)
+    dest = args.mirror_dest or sc.get("mirror_dest") or (disc.get("mgmt_ports") or [None])[0]
+    if not srcs or not dest:
+        raise RuntimeError("Could not determine mirror ports (set sites.mirror_sources / sites.mirror_dest in config.json).")
+    if not find_tshark() and not is_admin():          # check before touching the switch config
+        raise RuntimeError("Capturing traffic needs Administrator rights (or Wireshark/tshark installed). "
+                           "Open PowerShell with 'Run as administrator' and run the script again.")
+    norm = lambda p: re.search(r"\d+/\d+/\d+", p).group(0)
+    srcs = [s for s in srcs if norm(s) != norm(dest)]
+    print(f"🌍 Website/app monitoring for {seconds}s — mirroring {', '.join(srcs)} → {dest} (this PC)")
+    print("  ℹ Monitor users' traffic only on networks you manage and in line with your organisation's policy.")
+    session = cfg["mirror"]["session"]
+    net = ipaddress.ip_network(disc["subnet"])
+    local_ip = local_ip_towards(cfg["switch"]["host"])
+    events = []
+    lines = [f"no monitor session {session}",
+             f"monitor session {session} destination interface gigabitEthernet {norm(dest)}"]
+    lines += [f"monitor session {session} source interface gigabitEthernet {norm(s)} both" for s in srcs]
+    sw.config(lines)
+    try:
+        for pkt in capture_packets(seconds, local_ip, out_dir, sc.get("iface") or None):
+            r = parse_ip_packet(pkt)
+            if r:
+                events.extend(r)
+    finally:
+        try:
+            sw.config([f"no monitor session {session}"])
+        except Exception:
+            # The SSH session may have dropped; reconnect once just to remove the mirror.
+            sw2 = SwitchSSH(sw.host, sw.user, sw.password, sw.port, sw.enable_pass, sw.timeout).connect()
+            sw2.config([f"no monitor session {session}"])
+            sw2.close()
+        print("  🧹 Port mirroring removed.")
+    res = summarize_sites(events, net, disc.get("devices", []), int(sc.get("top_sites") or 10))
+    print(f"  {len(events)} lookups/connections captured from {len(res)} device(s).")
+    return {"duration_sec": seconds, "mirror_sources": srcs, "mirror_dest": dest, "devices": res}
+
+
+def print_sites(sites):
+    print(f"\n🌍 Websites, apps & browsers per device ({sites['duration_sec']}s sample):")
+    if not sites["devices"]:
+        print("  No traffic captured — check that mirroring reached this PC (see README).")
+    for r in sites["devices"]:
+        who = r["hostname"] or "?"
+        print(f"\n  ▸ {r['ip']}  {who}  ({r['port'] or '-'}, {r['type'] or '-'})  — {r['lookups']} lookups")
+        if r["browsers"]:
+            print("     browser: " + ", ".join(f"{b['name']} ({b['evidence']})" for b in r["browsers"])
+                  + (f"   os: {', '.join(r['os'])}" if r["os"] else ""))
+        if r["social"]:
+            print("     social/messaging: " + ", ".join(r["social"]))
+        other = [a["name"] for a in r["apps"] if a["name"] not in r["social"]]
+        if other:
+            print("     apps/sites: " + ", ".join(other[:12]))
+        if r["top_sites"]:
+            print("     other sites: " + ", ".join(f"{s['domain']} ({s['hits']})" for s in r["top_sites"]))
 
 
 # ============================ Cable diagnostics (TDR) ============================
@@ -807,16 +1786,7 @@ def print_network_map(disc, cables):
         print(f"{p:<9}{info['link']:<6}{sp:>6}  {icon.get(cb.get('verdict'), '·'):<6}{info['mac_count']:>5}  {note}")
 
     print(f"\n💻 Discovered devices: {len(disc['devices'])}  (replied to ping: {disc['alive_count']})")
-    print(f"{'IP':<16}{'MAC':<19}{'Port':<11}{'Ping':<6}{'RTT':>6}  Hostname")
-    print("-" * 90)
-    for d in disc["devices"]:
-        role = {"gateway": " (gateway)", "this-pc": " (this PC)", "switch": " (this switch)"}.get(d["role"], "")
-        port = (d["port"] or "-") + ("*" if d["behind_uplink"] else "")
-        rtt = f"{d['rtt_ms']:.0f}" if d["rtt_ms"] is not None else "-"
-        print(f"{d['ip'] or '-':<16}{d['mac'] or '-':<19}{port:<11}{'✔' if d['ping'] else '✖':<6}{rtt:>6}  "
-              f"{d['hostname'] or ''}{role}")
-    if any(d["behind_uplink"] for d in disc["devices"]):
-        print("  * = behind an uplink port (another switch/access point)")
+    print_port_devices(disc)
 
 
 # ====================== Port mirroring and packet capture ======================
@@ -914,17 +1884,17 @@ def save_docx(report, path, heavy_pct=70.0):
         sh.set(qn("w:val"), "clear"), sh.set(qn("w:color"), "auto"), sh.set(qn("w:fill"), fill)
         tcPr.append(sh)
 
-    def table(headers, rows, fills=None, widths=None):
+    def table(headers, rows, fills=None, widths=None, size=None):
         t = doc.add_table(rows=1, cols=len(headers))
         t.style = "Table Grid"
         t.alignment = WD_TABLE_ALIGNMENT.CENTER
         for c, h in zip(t.rows[0].cells, headers):
-            add_text(c.paragraphs[0], h, bold=True, color="FFFFFF")
+            add_text(c.paragraphs[0], h, bold=True, color="FFFFFF", size=size)
             shade(c, HEAD)
         for i, row in enumerate(rows):
             cells = t.add_row().cells
             for c, v in zip(cells, row):
-                add_text(c.paragraphs[0], "" if v is None else v)
+                add_text(c.paragraphs[0], "" if v is None else v, size=size)
                 if fills and fills[i]:
                     shade(c, fills[i])
         if widths:                                  # column widths as proportions of the usable page width
@@ -1015,16 +1985,45 @@ def save_docx(report, path, heavy_pct=70.0):
 
     # ---------- Devices ----------
     if disc.get("devices"):
-        heading(f"Discovered Devices ({len(disc['devices'])}) — Subnet {disc.get('subnet', '')}")
-        role = {"gateway": "Gateway", "this-pc": "This PC", "switch": "This switch"}
-        rows = [(d["ip"] or "-", d["mac"] or "-",
-                 (d["port"] or "-") + (" *" if d["behind_uplink"] else ""),
-                 "✔" if d["ping"] else "✖", d["rtt_ms"] if d["rtt_ms"] is not None else "-",
-                 d["hostname"] or "", role.get(d["role"], "")) for d in disc["devices"]]
-        table(["IP", "MAC", "Port", "Ping", "RTT ms", "Hostname", "Role"], rows,
-              [None if d["port"] else YELLOW for d in disc["devices"]], widths=[12, 15, 8, 5, 6, 16, 9])
-        para("* Behind an uplink port (another switch or access point).  Yellow: device not seen on this switch.",
-             color="777777", size=8)
+        heading(f"Devices per Switch Port ({len(disc['devices'])}) — Subnet {disc.get('subnet', '')}")
+        role = {"gateway": " (gateway)", "this-pc": " (this PC)", "switch": " (this switch)"}
+        rows = []
+        for d in disc["devices"]:
+            name = (d.get("hostname") or "?") + (f"\n[{d['name_source']}]" if d.get("name_source") else "")
+            extra = "\n".join(x for x in (d.get("web") and f"web: {d['web']}",
+                                          d.get("snmp_descr") and f"snmp: {d['snmp_descr'][:120]}") if x)
+            rows.append(((d["port"] or "-") + (" *" if d["behind_uplink"] else ""),
+                         f"{d['ip'] or '-'}\n{d['mac'] or '-'}",
+                         name + role.get(d["role"], ""),
+                         f"{d.get('type') or '-'}\n{d.get('vendor') or ''}".strip(),
+                         ", ".join(d.get("services") or []) or "-",
+                         extra or "-"))
+        table(["Port", "IP / MAC", "Name [source]", "Type / vendor", "Open ports", "Web / SNMP"], rows,
+              [None if d["port"] else YELLOW for d in disc["devices"]], widths=[8, 15, 15, 17, 18, 22], size=8)
+        para("* Behind an uplink port (another switch or access point).  Yellow: device not seen on this switch.  "
+             "Name sources: LLDP (switch), NetBIOS, mDNS, DNS, SNMP.", color="777777", size=8)
+
+    # ---------- Websites / apps / browsers ----------
+    sites = report.get("sites")
+    if sites:
+        heading(f"Websites, Social Media & Browsers per Device ({sites['duration_sec']}s sample)")
+        para(f"Mirrored ports: {', '.join(sites['mirror_sources'])} → {sites['mirror_dest']}.  "
+             "Browser 'user-agent' = exact (unencrypted HTTP); 'background traffic' = inferred from the "
+             "browser's own update/service servers.", color="777777", size=8)
+        rows, fills = [], []
+        for r in sites["devices"]:
+            other = [a["name"] for a in r["apps"] if a["name"] not in r["social"]]
+            rows.append((f"{r['ip']}\n{r['hostname'] or '?'}\n{r['port'] or '-'}",
+                         "\n".join(f"{b['name']} ({b['evidence']})" for b in r["browsers"]) or "-",
+                         ", ".join(r["social"]) or "-",
+                         ", ".join(other[:12]) or "-",
+                         ", ".join(f"{s['domain']} ({s['hits']})" for s in r["top_sites"]) or "-"))
+            fills.append(YELLOW if r["social"] else None)
+        if rows:
+            table(["Device", "Browser", "Social / messaging", "Apps & known sites", "Other sites (lookups)"],
+                  rows, fills, widths=[14, 15, 16, 22, 28], size=8)
+        else:
+            para("No traffic captured during the sample.")
 
     # ---------- Traffic ----------
     if report.get("traffic"):
@@ -1040,6 +2039,76 @@ def save_docx(report, path, heavy_pct=70.0):
 
 
 # ================================ Run ================================
+def tcp_open(host, port, timeout=3):
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def save_config_values(path, section, values):
+    """Update a few keys in config.json in place (keeps every other setting as the user wrote it)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        data.setdefault(section, {}).update(values)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"  ⚠ Could not update {path}: {e}")
+        return False
+
+
+def locate_switch(args, cfg):
+    """
+    The switch did not answer at its configured IP (usually its DHCP address changed).
+    Find it again by its MAC address: ping-sweep the subnet, then look the MAC up in the ARP table.
+    """
+    mac = norm_mac(cfg["switch"].get("mac") or "")
+    if not is_unicast(mac):
+        return None
+    net_c = cfg["network"]
+    net = ipaddress.ip_network(net_c.get("subnet") or f"{net_c.get('gateway') or args.host}/24", strict=False)
+    print(f"🔎 Looking for the switch (MAC {mac}) on {net}...", flush=True)
+    ping_sweep(net, int(net_c.get("scan_workers") or 64))
+    for ip, m in local_arp().items():
+        if m == mac and tcp_open(ip, args.port):
+            return ip
+    return None
+
+
+def connect_switch(args, cfg):
+    """Connect over SSH; if the switch moved to another IP, find it by MAC and update config.json."""
+    if not tcp_open(args.host, args.port):
+        print(f"⚠ The switch does not answer at {args.host}:{args.port}.")
+        new = locate_switch(args, cfg)
+        if not new:
+            hint = ("" if cfg["switch"].get("mac") else
+                    " Set \"mac\" under \"switch\" in config.json so the script can find it automatically.")
+            raise RuntimeError(f"Cannot reach the switch at {args.host}:{args.port} (no reply). Check that it is powered on, "
+                               f"connected, and that its IP has not changed (look it up in the router's DHCP list).{hint}")
+        print(f"✅ Switch found at its new IP {new} (was {args.host}).")
+        if save_config_values(args.config, "switch", {"host": new}):
+            print(f"  📝 config.json updated: switch.host = {new}.  Tip: give the switch a static IP or a DHCP "
+                  f"reservation on the router so it stops changing.")
+        args.host = cfg["switch"]["host"] = new
+    sw = SwitchSSH(args.host, args.user, args.password, args.port, args.enable_pass,
+                   cfg["switch"]["timeout"]).connect()
+    # Remember the switch's MAC so it can be found again if its IP changes.
+    if not cfg["switch"].get("mac"):
+        try:
+            line = next((l for l in sw.run(CMD["sysinfo"]).splitlines() if re.search(r"Mac\s*Address", l, re.I)), "")
+            mm = re.search(MAC_RE, line)
+            if mm:
+                cfg["switch"]["mac"] = norm_mac(mm.group(1))
+                save_config_values(args.config, "switch", {"mac": cfg["switch"]["mac"]})
+        except Exception:
+            pass
+    return sw
+
+
 def run_once(args, cfg):
     os.makedirs(cfg["output"]["out_dir"], exist_ok=True)
     report = {"timestamp": datetime.now().isoformat(timespec="seconds"), "switch": args.host}
@@ -1052,12 +2121,12 @@ def run_once(args, cfg):
             st = "✅" if n["alive"] else "❌"
             print(f"  {st} {n['host']:<16} loss={n['loss_pct']}% avg={n['avg_ms']}ms")
 
-    sw = SwitchSSH(args.host, args.user, args.password, args.port, args.enable_pass,
-                   cfg["switch"]["timeout"]).connect()
+    sw = connect_switch(args, cfg)
+    report["switch"] = args.host
     print(f"🔐 Connected to switch {args.host} via {sw.mode}")
     try:
         status = None
-        if (args.scan or args.cables) and not (args.health or args.all):
+        if (args.scan or args.cables or args.sites) and not (args.health or args.all):
             out = sw.run(CMD["status"])
             if raw is not None:
                 raw["status"] = out
@@ -1074,14 +2143,14 @@ def run_once(args, cfg):
                 print(f"  ⚠ {a}" if h["alerts"] else f"  {a}")
 
         disc, cables = None, {}
-        if args.scan or args.all:
+        if args.scan or args.all or args.sites:          # --sites needs the device map
             disc = discover_network(sw, cfg, status or {}, raw)
             report["discovery"] = disc
         if args.cables or args.all:
             print("🔌 Testing cables (Cable Diagnostics / TDR)...")
             mgmt = disc["mgmt_ports"] if disc else []
             if not disc and cfg["cables"].get("skip_mgmt_port", True):
-                mac_rows = parse_mac_table(sw.run(CMD["mac_table"]))
+                mac_rows = parse_mac_table(run_cmd(sw, "mac_table"))
                 mine = local_macs()
                 mgmt = sorted({r["port"] for r in mac_rows if r["mac"] in mine}, key=port_key)
             if mgmt:
@@ -1100,6 +2169,13 @@ def run_once(args, cfg):
             print("\n📋 Network & cable issues summary:")
             for a in all_alerts or ["No issues found ✅"]:
                 print(f"  ⚠ {a}" if all_alerts else f"  {a}")
+
+        if args.sites:
+            try:
+                report["sites"] = sites_monitor(sw, cfg, disc, args, cfg["output"]["out_dir"])
+                print_sites(report["sites"])
+            except RuntimeError as e:
+                print(f"⚠ Website monitoring skipped: {e}")
 
         if args.traffic or args.all:
             print(f"📈 Monitoring traffic: {args.samples} samples × {args.interval}s")
@@ -1180,6 +2256,10 @@ def main():
     p.add_argument("--cables", action="store_true", help="Run cable diagnostics (TDR) on switch ports")
     p.add_argument("--cable-ports", default=None, help="Specific ports for cable tests, e.g. 1/0/3,1/0/7")
     p.add_argument("--subnet", default=None, help="Subnet to scan, e.g. 192.168.1.0/24")
+    p.add_argument("--no-port-scan", action="store_true", help="Identify devices without scanning their TCP ports")
+    p.add_argument("--sites", action="store_true",
+                   help="Show websites/social media/browser per IP (mirrors the gateway port to this PC; needs admin or tshark)")
+    p.add_argument("--sites-secs", type=int, default=None, help="How long to sample traffic for --sites (seconds)")
     p.add_argument("--all", action="store_true", help="All checks (default)")
     p.add_argument("--ping", nargs="*", default=net["ping_targets"])
     p.add_argument("--interval", type=float, default=mon["interval_sec"], help="Seconds between samples")
@@ -1194,10 +2274,12 @@ def main():
     p.add_argument("--dump-raw", action="store_true")
     args = p.parse_args()
 
-    if not (args.health or args.traffic or args.scan or args.cables or args.all):
+    if not (args.health or args.traffic or args.scan or args.cables or args.sites or args.all):
         args.all = True
     if args.subnet:
         cfg["network"]["subnet"] = args.subnet
+    if args.no_port_scan:
+        cfg["devices"]["port_scan"] = False
     cfg["switch"]["host"] = args.host        # so discovery recognises the switch even with --host / SW_HOST
     if net.get("gateway") and net["gateway"] not in args.ping:
         args.ping.append(net["gateway"])

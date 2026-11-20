@@ -22,6 +22,16 @@ A Python script that checks network and switch health, monitors per-port traffic
 - **Traffic monitoring:** Rx/Tx in Mbps and utilization per port, sorted busiest first, with heavy ports marked 🔥.
 - **Traffic capture (optional):** mirrors the busiest port to your PC's port and captures it with `tshark` into a pcap file, with a summary of top talkers and protocols.
 - **Full network discovery (`--scan`):** pings every address in the subnet, then maps each device (IP ↔ MAC ↔ switch port) using the switch's MAC and ARP tables, with hostnames, and flags the gateway, your PC, and ports with another switch or access point behind them (uplinks).
+- **Device identification per port (part of `--scan`):** for every device on every switch port:
+  - **Name**, from the best available source: LLDP (from the switch), NetBIOS (Windows PCs), mDNS (phones, Apple, printers), DNS, SNMP.
+  - **Vendor** from the MAC address (Wireshark vendor list, downloaded once to `manuf.txt`). Randomized/private MACs (phones) and virtual MACs of routers/APs are recognized.
+  - **Open TCP ports** (web, SSH, RDP, SMB, printing, cameras, etc.) and the **web page title** when the device has a web interface (often shows the exact model).
+  - **Device type** guess: Windows PC, printer, IP camera, phone, iPhone, network device, NAS, router.
+- **Websites, social media & browser per IP (`--sites`):** temporarily mirrors the gateway port and the local DNS server's port to this PC, samples the traffic (default 120 s), then removes the mirror. For each device it reports:
+  - **Social media / messaging** used (Facebook, Instagram, TikTok, WhatsApp, Telegram, X, Snapchat...), plus known apps/sites (YouTube, Netflix, ChatGPT, Gmail, shopping, news, games...).
+  - **Other websites** visited, by registered domain, with background/system traffic (updates, CDNs, ads) filtered out.
+  - **Browser**: exact from the User-Agent of unencrypted HTTP, otherwise inferred from the browser's own background servers (Edge, Chrome, Firefox, Opera, Brave, Yandex).
+  - Sources: DNS queries, the TLS SNI (site name sent in clear at the start of every HTTPS connection), and HTTP Host/User-Agent. Page contents are encrypted and are **not** read.
 - **Cable diagnostics (`--cables`):** TDR test on every copper port: OK, short, open pair with the approximate distance to the fault, impedance mismatch, cable OK but device off, or no cable. Skips the management port (where your PC is connected) and SFP ports automatically.
 - **Word report:** every run also produces a `.docx` report with color-coded tables.
 - **Repeated runs:** `--watch` mode repeats the check every N seconds.
@@ -55,7 +65,7 @@ Open `config.json` and edit the values:
 
 ```json
 {
-  "switch":     { "host": "192.168.1.110", "port": 22, "username": "", "password": "", "enable_password": "", "timeout": 20 },
+  "switch":     { "host": "192.168.1.250", "port": 22, "username": "", "password": "", "enable_password": "", "timeout": 20 },
   "network":    { "gateway": "192.168.1.1", "ping_targets": ["192.168.1.1", "8.8.8.8"], "subnet": "192.168.1.0/24" },
   "cables":     { "ports": "all", "exclude": [], "skip_mgmt_port": true, "skip_fiber": true, "max_length_m": 100 },
   "thresholds": { "heavy_util_pct": 70.0, "cpu_warn_pct": 80.0, "mem_warn_pct": 85.0 },
@@ -76,6 +86,13 @@ Open `config.json` and edit the values:
 | `network` | `gateway`, `ping_targets` | Gateway and addresses to check connectivity to |
 | | `subnet`, `scan_workers` | Subnet to scan (empty = /24 of the gateway) and number of parallel pings |
 | | `resolve_names`, `uplink_mac_threshold` | Look up hostnames; number of MACs on a port for it to count as an uplink |
+| `devices` | `port_scan`, `scan_ports` | Scan devices' TCP ports, and which ports (empty = built-in list) |
+| | `scan_timeout`, `scan_workers` | Per-port connect timeout (seconds) and parallel connections |
+| | `netbios`, `mdns`, `snmp`, `snmp_communities` | Name sources to use; SNMP communities to try |
+| | `http_title`, `vendor_lookup`, `oui_file`, `oui_url` | Read web page titles; MAC vendor lookup and its cached database |
+| `sites` | `duration_sec` | How long to sample traffic for `--sites` |
+| | `mirror_sources`, `mirror_dest` | Ports to mirror (`auto` = gateway + local DNS server ports) and the port this PC is on (empty = detected) |
+| | `iface`, `top_sites` | Capture interface for tshark/Linux (empty = default); number of "other sites" listed per device |
 | `cables` | `ports`, `exclude` | Ports to test (`all` or a list) and ports to exclude |
 | | `skip_mgmt_port`, `skip_fiber`, `max_length_m` | Skip the management port and fiber ports; maximum cable length |
 | `thresholds` | `heavy_util_pct` | Utilization at which a port counts as heavy |
@@ -130,6 +147,9 @@ python3 switch_monitor.py --cables --cable-ports 1/0/3,1/0/7
 # Scan a different subnet
 python3 switch_monitor.py --scan --subnet 192.168.10.0/24
 
+# Websites / social media / browser per IP for 5 minutes (run PowerShell as Administrator)
+python3 switch_monitor.py --sites --sites-secs 300
+
 # Health check only
 python3 switch_monitor.py --health
 
@@ -154,6 +174,8 @@ python3 switch_monitor.py --config /etc/netmon/site-a.json
 | `--health` / `--traffic` / `--scan` / `--cables` / `--all` | Check type (`--all` = everything, the default) |
 | `--cable-ports 1/0/3,1/0/7` | Test cables on specific ports only |
 | `--subnet 192.168.1.0/24` | Subnet to scan |
+| `--no-port-scan` | Identify devices without scanning their TCP ports (faster, quieter) |
+| `--sites`, `--sites-secs N` | Websites / social media / browser per IP, sampled for N seconds (not part of `--all`) |
 | `--host`, `--port`, `--user`, `--password`, `--enable-pass` | Connection details |
 | `--ping IP ...` | Connectivity check targets |
 | `--interval`, `--samples`, `--top`, `--heavy` | Monitoring settings |
@@ -198,6 +220,13 @@ Gi1/0/5  up        120.33     40.01    160.34   1000    12.0     0
 
 - **Output format:** command output can differ between firmware versions. If you see zeros or wrong numbers, run with `--dump-raw` and review the raw file to tune the parser or the commands in `config.json`.
 - **Cable tests:** on some devices a TDR test can drop the port's link for a few seconds, so the management port is skipped automatically. If you run the scan from a PC that isn't directly connected to the switch, add the uplink port to `cables.exclude`.
+- **Website monitoring (`--sites`):**
+  - Needs **Administrator** rights (built-in capture), or Wireshark/tshark with Npcap installed (used automatically if present).
+  - Watching users' browsing is subject to law and company policy: only do it on networks you manage, and inform users as your policy requires.
+  - Devices using encrypted DNS (DoH) or a VPN only show the sites visible in SNI, or nothing at all.
+  - The mirror is always removed at the end. If the PC loses power mid-capture, remove it from the switch web UI (**Monitoring → Port Mirror**) or reboot the switch (it is never saved to the startup config).
+- **Port scanning:** the scan only opens TCP connections to the listed ports on your own subnet. Security software on some devices may log it; run it only on networks you manage. Use `--no-port-scan` to skip it.
+- **Commands not supported by your firmware:** for the MAC table, ARP and LLDP the script automatically tries known alternatives and tells you which one worked.
 - **Scanning requires your PC to be on the same subnet** so the local ARP table gets populated; otherwise only the switch's `show arp` data is used.
 - **Port mirroring:** `dest_port` must be the port your capture PC is actually connected to, and must not be the management port you reach the switch through. Try it first at a time when a brief outage won't hurt.
 - **Permissions:** `tshark` usually needs `sudo` or membership in the `wireshark` group.
